@@ -17,16 +17,31 @@ export type Document = {
 };
 
 export const CATEGORIES = [
-  { id: "01_Presentations", label: "Présentations", icon: "presentation", color: "#3B28CC" },
-  { id: "02_Documents", label: "Documents", icon: "file-text", color: "#1E3A5F" },
-  { id: "03_Tableurs", label: "Tableurs", icon: "table", color: "#0D9488" },
-  { id: "04_Branding_Strikin", label: "Branding", icon: "palette", color: "#D946EF" },
-  { id: "05_Produits_Cardif", label: "Produits Cardif", icon: "building", color: "#EA580C" },
-  { id: "06_Produits_MeilleurTaux", label: "Produits MeilleurTaux", icon: "trending-up", color: "#2563EB" },
-  { id: "07_Marex", label: "Marex", icon: "landmark", color: "#7C3AED" },
-  { id: "08_Fiches_Produits", label: "Fiches Produits", icon: "clipboard-list", color: "#DC2626" },
-  { id: "09_Code_Produits_Structures", label: "Code & Structures", icon: "code", color: "#059669" },
+  { id: "01_Presentations", label: "Présentations", icon: "presentation", color: "#3B28CC", protected: false },
+  { id: "02_Documents", label: "Documents", icon: "file-text", color: "#1E3A5F", protected: true },
+  { id: "03_Tableurs", label: "Tableurs", icon: "table", color: "#0D9488", protected: true },
+  { id: "04_Branding_Strikin", label: "Branding", icon: "palette", color: "#D946EF", protected: false },
+  { id: "05_Produits_Cardif", label: "Produits Cardif", icon: "building", color: "#EA580C", protected: false },
+  { id: "06_Produits_MeilleurTaux", label: "Produits MeilleurTaux", icon: "trending-up", color: "#2563EB", protected: false },
+  { id: "07_Marex", label: "Marex", icon: "landmark", color: "#7C3AED", protected: true },
+  { id: "08_Fiches_Produits", label: "Fiches Produits", icon: "clipboard-list", color: "#DC2626", protected: false },
+  { id: "09_Code_Produits_Structures", label: "Code & Structures", icon: "code", color: "#059669", protected: true },
 ] as const;
+
+/** Categories that require admin access */
+export const PROTECTED_CATEGORIES = CATEGORIES.filter((c) => c.protected).map((c) => c.id);
+
+/** Check if a document belongs to a protected category */
+export function isProtectedDoc(category: string): boolean {
+  return (PROTECTED_CATEGORIES as readonly string[]).includes(category);
+}
+
+/** Admin password */
+const ADMIN_PIN = "strickin2026";
+
+export function verifyAdminPassword(input: string): boolean {
+  return input === ADMIN_PIN;
+}
 
 export async function getDocuments(category?: string, search?: string) {
   let query = supabase.from("documents").select("*").order("category").order("name");
