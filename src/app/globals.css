@@ -1,0 +1,43 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=Syne:wght@400..800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-grey-bg text-gray-900 font-sans antialiased;
+  }
+  h1, h2, h3 {
+    @apply font-display;
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-white rounded-2xl shadow-sm border border-grey-border p-6 transition-all duration-200 hover:shadow-md;
+  }
+  .badge {
+    @apply inline-flex items-center px-3 py-1 rounded-full text-xs font-medium;
+  }
+  .btn-primary {
+    @apply bg-violet text-white px-5 py-2.5 rounded-xl font-medium transition-all hover:bg-violet-dark active:scale-95;
+  }
+  .btn-secondary {
+    @apply bg-white text-cobalt border border-grey-border px-5 py-2.5 rounded-xl font-medium transition-all hover:bg-gray-50 active:scale-95;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: #f4f4f8; }
+::-webkit-scrollbar-thumb { background: #c4c4cc; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #a4a4ac; }
+
+/* PDF viewer */
+.pdf-viewer {
+  width: 100%;
+  height: 80vh;
+  border: none;
+  border-radius: 12px;
+}
