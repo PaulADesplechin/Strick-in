@@ -6,6 +6,7 @@ import { DocumentCard } from "@/components/DocumentCard";
 import { CategorySidebar } from "@/components/CategorySidebar";
 import { SearchBar } from "@/components/SearchBar";
 import { StatsBar } from "@/components/StatsBar";
+import { AdminLock } from "@/components/AdminLock";
 
 export default function Home() {
   const [documents, setDocuments] = useState<Document[]>([]);
@@ -13,9 +14,15 @@ export default function Home() {
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [adminUnlocked, setAdminUnlocked] = useState(false);
+  const [showAdminModal, setShowAdminModal] = useState(false);
 
   useEffect(() => {
     loadDocuments();
+    if (typeof window !== "undefined") {
+      const unlocked = sessionStorage.getItem("strickin_admin");
+      if (unlocked === "true") setAdminUnlocked(true);
+    }
   }, []);
 
   async function loadDocuments() {
@@ -31,6 +38,21 @@ export default function Home() {
       console.error("Error loading documents:", err);
     } finally {
       setLoading(false);
+    }
+  }
+
+  function handleAdminUnlock() {
+    setAdminUnlocked(true);
+    setShowAdminModal(false);
+    if (typeof window !== "undefined") {
+      sessionStorage.setItem("strickin_admin", "true");
+    }
+  }
+
+  function handleAdminLock() {
+    setAdminUnlocked(false);
+    if (typeof window !== "undefined") {
+      sessionStorage.removeItem("strickin_admin");
     }
   }
 
@@ -69,43 +91,65 @@ export default function Home() {
 
   return (
     <div className="space-y-6">
-      {/* Stats */}
+      {showAdminModal && (
+        <AdminLock
+          onUnlock={handleAdminUnlock}
+          onClose={() => setShowAdminModal(false)}
+        />
+      )}
+
       <StatsBar total={documents.length} filtered={filtered.length} categories={Object.keys(categoryCounts).length} />
 
-      {/* Search + View Toggle */}
       <div className="flex items-center gap-4">
         <SearchBar value={search} onChange={setSearch} />
-        <div className="flex items-center gap-1 bg-white rounded-xl border border-grey-border p-1">
-          <button
-            onClick={() => setViewMode("grid")}
-            className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-              viewMode === "grid" ? "bg-violet text-white" : "text-gray-500 hover:text-gray-700"
-            }`}
-          >
-            Grille
-          </button>
-          <button
-            onClick={() => setViewMode("list")}
-            className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-              viewMode === "list" ? "bg-violet text-white" : "text-gray-500 hover:text-gray-700"
-            }`}
-          >
-            Liste
-          </button>
+        <div className="flex items-center gap-2">
+          {adminUnlocked ? (
+            <button
+              onClick={handleAdminLock}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium bg-green-50 text-green-700 border border-green-200 hover:bg-green-100 transition-all"
+              title="Cliquer pour verrouiller"
+            >
+              🔓 Admin
+            </button>
+          ) : (
+            <button
+              onClick={() => setShowAdminModal(true)}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 transition-all"
+              title="Cliquer pour déverrouiller"
+            >
+              🔒 Admin
+            </button>
+          )}
+          <div className="flex items-center gap-1 bg-white rounded-xl border border-grey-border p-1">
+            <button
+              onClick={() => setViewMode("grid")}
+              className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                viewMode === "grid" ? "bg-violet text-white" : "text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              Grille
+            </button>
+            <button
+              onClick={() => setViewMode("list")}
+              className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                viewMode === "list" ? "bg-violet text-white" : "text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              Liste
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Main Content */}
       <div className="flex gap-6">
-        {/* Sidebar */}
         <CategorySidebar
           categories={CATEGORIES}
           counts={categoryCounts}
           active={activeCategory}
           onSelect={setActiveCategory}
+          adminUnlocked={adminUnlocked}
         />
 
-        {/* Documents */}
         <div className="flex-1">
           {filtered.length === 0 ? (
             <div className="card text-center py-16">
@@ -115,13 +159,25 @@ export default function Home() {
           ) : viewMode === "grid" ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {filtered.map((doc) => (
-                <DocumentCard key={doc.id} document={doc} mode="grid" />
+                <DocumentCard
+                  key={doc.id}
+                  document={doc}
+                  mode="grid"
+                  isUnlocked={adminUnlocked}
+                  onLockClick={() => setShowAdminModal(true)}
+                />
               ))}
             </div>
           ) : (
             <div className="space-y-2">
               {filtered.map((doc) => (
-                <DocumentCard key={doc.id} document={doc} mode="list" />
+                <DocumentCard
+                  key={doc.id}
+                  document={doc}
+                  mode="list"
+                  isUnlocked={adminUnlocked}
+                  onLockClick={() => setShowAdminModal(true)}
+                />
               ))}
             </div>
           )}
