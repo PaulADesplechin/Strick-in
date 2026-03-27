@@ -19,6 +19,7 @@ export default function Home() {
 
   useEffect(() => {
     loadDocuments();
+    // Check if admin was already unlocked this session
     if (typeof window !== "undefined") {
       const unlocked = sessionStorage.getItem("strickin_admin");
       if (unlocked === "true") setAdminUnlocked(true);
@@ -58,6 +59,10 @@ export default function Home() {
 
   const filtered = useMemo(() => {
     let result = documents;
+    // Hide Doublons from default view unless admin is unlocked or category explicitly selected
+    if (!adminUnlocked && activeCategory !== "10_Doublons") {
+      result = result.filter((d) => d.category !== "10_Doublons");
+    }
     if (activeCategory) result = result.filter((d) => d.category === activeCategory);
     if (search) {
       const q = search.toLowerCase();
@@ -68,7 +73,7 @@ export default function Home() {
       );
     }
     return result;
-  }, [documents, activeCategory, search]);
+  }, [documents, activeCategory, search, adminUnlocked]);
 
   const categoryCounts = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -77,6 +82,12 @@ export default function Home() {
     });
     return counts;
   }, [documents]);
+
+  // Count visible documents (excluding hidden Doublons when not admin)
+  const visibleTotal = useMemo(() => {
+    if (adminUnlocked) return documents.length;
+    return documents.filter((d) => d.category !== "10_Doublons").length;
+  }, [documents, adminUnlocked]);
 
   if (loading) {
     return (
@@ -91,6 +102,7 @@ export default function Home() {
 
   return (
     <div className="space-y-6">
+      {/* Admin Modal */}
       {showAdminModal && (
         <AdminLock
           onUnlock={handleAdminUnlock}
@@ -98,28 +110,32 @@ export default function Home() {
         />
       )}
 
-      <StatsBar total={documents.length} filtered={filtered.length} categories={Object.keys(categoryCounts).length} />
+      {/* Stats */}
+      <StatsBar total={visibleTotal} filtered={filtered.length} categories={Object.keys(categoryCounts).length} />
 
+      {/* Search + View Toggle + Admin */}
       <div className="flex items-center gap-4">
         <SearchBar value={search} onChange={setSearch} />
         <div className="flex items-center gap-2">
+          {/* Admin toggle */}
           {adminUnlocked ? (
             <button
               onClick={handleAdminLock}
               className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium bg-green-50 text-green-700 border border-green-200 hover:bg-green-100 transition-all"
               title="Cliquer pour verrouiller"
             >
-              🔓 Admin
+              \uD83D\uDD13 Admin
             </button>
           ) : (
             <button
               onClick={() => setShowAdminModal(true)}
               className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 transition-all"
-              title="Cliquer pour déverrouiller"
+              title="Cliquer pour d\u00E9verrouiller"
             >
-              🔒 Admin
+              \uD83D\uDD12 Admin
             </button>
           )}
+          {/* View mode */}
           <div className="flex items-center gap-1 bg-white rounded-xl border border-grey-border p-1">
             <button
               onClick={() => setViewMode("grid")}
@@ -141,7 +157,9 @@ export default function Home() {
         </div>
       </div>
 
+      {/* Main Content */}
       <div className="flex gap-6">
+        {/* Sidebar */}
         <CategorySidebar
           categories={CATEGORIES}
           counts={categoryCounts}
@@ -150,10 +168,11 @@ export default function Home() {
           adminUnlocked={adminUnlocked}
         />
 
+        {/* Documents */}
         <div className="flex-1">
           {filtered.length === 0 ? (
             <div className="card text-center py-16">
-              <p className="text-gray-400 text-lg">Aucun document trouvé</p>
+              <p className="text-gray-400 text-lg">Aucun document trouv\u00E9</p>
               <p className="text-gray-300 text-sm mt-2">Essayez de modifier votre recherche ou filtres</p>
             </div>
           ) : viewMode === "grid" ? (
