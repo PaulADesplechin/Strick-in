@@ -1,6 +1,6 @@
 "use client";
 
-import { type Document, CATEGORIES, supabase } from "@/lib/supabase";
+import { type Document, CATEGORIES, getPublicUrl } from "@/lib/supabase";
 
 interface DocumentCardProps {
   document: Document;
@@ -41,26 +41,21 @@ function getCategoryLabel(categoryId: string): string {
   return cat?.label || categoryId;
 }
 
-async function handleDownload(doc: Document) {
-  const { data } = await supabase.storage
-    .from("strickin-docs")
-    .createSignedUrl(doc.storage_path, 3600);
-  if (data?.signedUrl) {
-    window.open(data.signedUrl, "_blank");
-  }
+function handleDownload(doc: Document) {
+  const url = getPublicUrl(doc.storage_path);
+  // Create a temporary link to force download
+  const a = window.document.createElement("a");
+  a.href = url;
+  a.download = doc.name + "." + doc.file_type;
+  a.target = "_blank";
+  window.document.body.appendChild(a);
+  a.click();
+  window.document.body.removeChild(a);
 }
 
-async function handlePreview(doc: Document) {
-  if (doc.file_type !== "pdf") {
-    handleDownload(doc);
-    return;
-  }
-  const { data } = await supabase.storage
-    .from("strickin-docs")
-    .createSignedUrl(doc.storage_path, 3600);
-  if (data?.signedUrl) {
-    window.open(data.signedUrl, "_blank");
-  }
+function handlePreview(doc: Document) {
+  const url = getPublicUrl(doc.storage_path);
+  window.open(url, "_blank");
 }
 
 export function DocumentCard({ document: doc, mode }: DocumentCardProps) {
