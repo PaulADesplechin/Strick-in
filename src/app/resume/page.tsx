@@ -18,6 +18,15 @@ function formatDate(dateStr: string): string {
   });
 }
 
+const printCSS = `
+@media print {
+  nav, .no-print, header, footer { display: none !important; }
+  body { background: white !important; }
+  .print-break { page-break-before: always; }
+  * { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+}
+`;
+
 export default function ResumePage() {
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(true);
@@ -37,7 +46,6 @@ export default function ResumePage() {
         .order("name");
       if (error) throw error;
       setDocuments(data || []);
-      // Expand all categories by default
       const cats = new Set((data || []).map((d: Document) => d.category));
       setExpandedCats(cats);
     } catch (err) {
@@ -97,14 +105,7 @@ export default function ResumePage() {
 
   return (
     <>
-      <style jsx global>{`
-        @media print {
-          nav, .no-print, header, footer { display: none !important; }
-          body { background: white !important; }
-          .print-break { page-break-before: always; }
-          * { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
-        }
-      `}</style>
+      <style dangerouslySetInnerHTML={{ __html: printCSS }} />
 
       <div ref={printRef} className="max-w-5xl mx-auto space-y-8 pb-12">
         {/* Header */}
@@ -181,7 +182,6 @@ export default function ResumePage() {
 
           return (
             <div key={cat.id} className="card overflow-hidden">
-              {/* Category Header */}
               <button
                 onClick={() => toggleCat(cat.id)}
                 className="w-full flex items-center justify-between p-5 hover:bg-gray-50 transition-colors"
@@ -203,7 +203,6 @@ export default function ResumePage() {
                 <span className="text-gray-400 text-xl">{isExpanded ? "\u25B2" : "\u25BC"}</span>
               </button>
 
-              {/* Documents List */}
               {isExpanded && (
                 <div className="border-t border-gray-100">
                   <table className="w-full">
