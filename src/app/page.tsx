@@ -7,6 +7,7 @@ import { CategorySidebar } from "@/components/CategorySidebar";
 import { SearchBar } from "@/components/SearchBar";
 import { StatsBar } from "@/components/StatsBar";
 import { AdminLock } from "@/components/AdminLock";
+import { UploadZone } from "@/components/UploadZone";
 
 export default function Home() {
   const [documents, setDocuments] = useState<Document[]>([]);
@@ -19,7 +20,6 @@ export default function Home() {
 
   useEffect(() => {
     loadDocuments();
-    // Check if admin was already unlocked this session
     if (typeof window !== "undefined") {
       const unlocked = sessionStorage.getItem("strickin_admin");
       if (unlocked === "true") setAdminUnlocked(true);
@@ -59,7 +59,6 @@ export default function Home() {
 
   const filtered = useMemo(() => {
     let result = documents;
-    // Hide Doublons from default view unless admin is unlocked or category explicitly selected
     if (!adminUnlocked && activeCategory !== "10_Doublons") {
       result = result.filter((d) => d.category !== "10_Doublons");
     }
@@ -83,7 +82,6 @@ export default function Home() {
     return counts;
   }, [documents]);
 
-  // Count visible documents (excluding hidden Doublons when not admin)
   const visibleTotal = useMemo(() => {
     if (adminUnlocked) return documents.length;
     return documents.filter((d) => d.category !== "10_Doublons").length;
@@ -102,7 +100,6 @@ export default function Home() {
 
   return (
     <div className="space-y-6">
-      {/* Admin Modal */}
       {showAdminModal && (
         <AdminLock
           onUnlock={handleAdminUnlock}
@@ -110,14 +107,14 @@ export default function Home() {
         />
       )}
 
-      {/* Stats */}
       <StatsBar total={visibleTotal} filtered={filtered.length} categories={Object.keys(categoryCounts).length} />
 
-      {/* Search + View Toggle + Admin */}
+      {/* Upload Zone */}
+      <UploadZone onUploadComplete={loadDocuments} />
+
       <div className="flex items-center gap-4">
         <SearchBar value={search} onChange={setSearch} />
         <div className="flex items-center gap-2">
-          {/* Admin toggle */}
           {adminUnlocked ? (
             <button
               onClick={handleAdminLock}
@@ -135,7 +132,6 @@ export default function Home() {
               \uD83D\uDD12 Admin
             </button>
           )}
-          {/* View mode */}
           <div className="flex items-center gap-1 bg-white rounded-xl border border-grey-border p-1">
             <button
               onClick={() => setViewMode("grid")}
@@ -157,9 +153,7 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Main Content */}
       <div className="flex gap-6">
-        {/* Sidebar */}
         <CategorySidebar
           categories={CATEGORIES}
           counts={categoryCounts}
@@ -168,7 +162,6 @@ export default function Home() {
           adminUnlocked={adminUnlocked}
         />
 
-        {/* Documents */}
         <div className="flex-1">
           {filtered.length === 0 ? (
             <div className="card text-center py-16">
