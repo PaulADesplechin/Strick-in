@@ -26,6 +26,7 @@ export const CATEGORIES = [
   { id: "07_Marex", label: "Marex", icon: "landmark", color: "#7C3AED", protected: true },
   { id: "08_Fiches_Produits", label: "Fiches Produits", icon: "clipboard-list", color: "#DC2626", protected: false },
   { id: "09_Code_Produits_Structures", label: "Code & Structures", icon: "code", color: "#059669", protected: true },
+  { id: "10_Doublons", label: "Doublons", icon: "copy", color: "#9CA3AF", protected: true },
 ] as const;
 
 /** Categories that require admin access */
