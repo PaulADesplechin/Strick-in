@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import ChatWidget from "@/components/ChatWidget";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -34,6 +35,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <footer className="border-t border-grey-border py-6 text-center text-sm text-gray-400">
           Strick&apos;in - Portail documentaire interne - Mars 2026
         </footer>
+      <ChatWidget />
       </body>
     </html>
   );
