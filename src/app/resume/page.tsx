@@ -102,6 +102,127 @@ function extractUnderlyings(docs: Doc[]): string[] {
   return Array.from(s).sort();
 }
 
+function generateFileSummary(name: string, category: string): string {
+  const n = name.toLowerCase();
+  const ext = name.split(".").pop()?.toLowerCase() || "";
+
+  // Extract ISIN if present
+  const isinMatch = name.match(/[A-Z]{2}[A-Z0-9]{9}[0-9]/);
+  const isinNote = isinMatch ? " | ISIN: " + isinMatch[0] : "";
+
+  // Detect product name patterns
+  let product = "";
+  const productPatterns = [
+    "Daily Degressif", "Phoenix Autocall", "HIS CMS Phoenix", "Horizon Taux",
+    "BBVA Opti Strike", "Rendement Memoire", "Monthly Step Transat", "K Taux Euribor",
+    "Odyssee Tempo", "Athena Escalier", "Fleche", "Autocallable", "BRC",
+    "Phoenix", "Degressif"
+  ];
+  for (const pp of productPatterns) {
+    if (n.includes(pp.toLowerCase())) { product = pp; break; }
+  }
+
+  // Detect emitter
+  let emitter = "";
+  if (n.match(/bnp|cardif/)) emitter = "BNP Paribas Cardif";
+  else if (n.includes("hsbc")) emitter = "HSBC";
+  else if (n.includes("goldman")) emitter = "Goldman Sachs";
+  else if (n.includes("bbva")) emitter = "BBVA";
+  else if (n.includes("julius baer")) emitter = "Julius Baer";
+  else if (n.includes("marex")) emitter = "Marex Solutions";
+
+  // Detect underlying
+  let underlying = "";
+  if (n.match(/euro stoxx.*bank/)) underlying = "Euro Stoxx Banks";
+  else if (n.includes("euro stoxx 50")) underlying = "Euro Stoxx 50";
+  else if (n.includes("dax")) underlying = "DAX";
+  else if (n.includes("netflix")) underlying = "Netflix";
+  else if (n.includes("asml")) underlying = "ASML";
+  else if (n.includes("totalenergies")) underlying = "TotalEnergies";
+  else if (n.match(/cr.*dit agricole/)) underlying = "Credit Agricole";
+  else if (n.includes("engie")) underlying = "Engie";
+  else if (n.includes("bitcoin")) underlying = "Bitcoin";
+  else if (n.includes("msft")) underlying = "Microsoft";
+  else if (n.includes("euribor")) underlying = "Euribor";
+
+  const docType = getDocType(name);
+
+  // Build contextual summary based on doc type + category
+  if (category === "01_Presentations") {
+    if (n.includes("pitch")) return "Presentation commerciale pour investisseurs." + isinNote;
+    if (n.includes("assureur")) return "Deck de presentation destine aux assureurs partenaires.";
+    if (n.includes("distribution")) return "Modele de distribution digitale des produits structures.";
+    if (n.includes("v2")) return "Version de reference actualisee de la presentation Strick'in.";
+    return "Support de presentation Strick'in." + isinNote;
+  }
+
+  if (category === "03_Tableurs") {
+    if (n.includes("catalogue") && n.includes("julius")) {
+      const dateMatch = n.match(/(\d{2}[\/_]\d{2}[\/_]\d{2,4})/);
+      return "Catalogue Julius Baer" + (dateMatch ? " du " + dateMatch[1] : "") + " : prix, ISIN, sous-jacents et conditions des produits disponibles.";
+    }
+    return "Fichier de suivi et catalogage des produits structures." + isinNote;
+  }
+
+  if (category === "04_Branding_Strikin") {
+    if (n.includes("brand book")) return "Guide de marque definissant l'identite visuelle Strick'in (logo, couleurs, typographies).";
+    if (n.includes("charte")) return "Charte graphique officielle avec guidelines de communication.";
+    return "Document d'identite de marque Strick'in.";
+  }
+
+  if (category === "05_Produits_Cardif") {
+    const parts = [];
+    if (docType !== "Document") parts.push(docType);
+    if (product) parts.push("produit " + product);
+    if (emitter) parts.push("emis par " + emitter);
+    if (underlying) parts.push("sous-jacent " + underlying);
+    if (parts.length > 0) return parts.join(" - ") + "." + isinNote;
+    if (n.includes("brochure")) return "Brochure commerciale detaillant le mecanisme, les scenarios et le profil de risque." + isinNote;
+    if (n.includes("bulletin")) return "Formulaire de souscription avec conditions et modalites d'investissement." + isinNote;
+    if (n.includes("fiche rapide")) return "Synthese rapide des caracteristiques cles du produit." + isinNote;
+    if (n.startsWith("kid") || n.includes("kid ")) return "Document d'informations cles (KID/DIC) conforme a la reglementation PRIIPs." + isinNote;
+    if (n.includes("conditions")) return "Conditions generales et specifiques du produit structure." + isinNote;
+    return "Documentation produit structure distribue via BNP Paribas Cardif." + isinNote;
+  }
+
+  if (category === "06_Produits_MeilleurTaux") {
+    const mtMatch = n.match(/mt\s*(\d+)/i);
+    return "Document d'informations cles (KID)" + (mtMatch ? " pour le produit MeilleurTaux MT" + mtMatch[1] : "") + " : objectifs, risques, scenarios de performance et couts." + isinNote;
+  }
+
+  if (category === "07_Marex") {
+    if (n.includes("final term")) return "Conditions definitives (Final Terms) du produit structure." + isinNote;
+    if (n.includes("term sheet")) return "Fiche de structuration avec parametres du produit (strike, barriere, coupon, maturite)." + isinNote;
+    if (n.includes("test")) return "Document de test de structuration pour validation de pricing." + isinNote;
+    if (n.includes("autocallable")) return "Structure autocallable : remboursement anticipe conditionnel." + isinNote;
+    if (n.includes("brc")) return "Barrier Reverse Convertible" + (underlying ? " sur " + underlying : "") + "." + isinNote;
+    return "Documentation de structuration Marex Solutions." + isinNote;
+  }
+
+  if (category === "08_Fiches_Produits") {
+    if (n.includes("guide")) return "Guide pedagogique complet couvrant tous les types de produits structures.";
+    return "Fiche de reference produit." + isinNote;
+  }
+
+  if (category === "09_Code_Produits_Structures") {
+    if (n.includes("autocall")) return "Template technique pour la structuration d'un produit Autocall parametrique.";
+    if (n.includes("template") || n.includes("modele")) return "Modele generique parametrable pour la structuration de produits.";
+    return "Template de code pour produits structures.";
+  }
+
+  if (category === "10_Doublons") {
+    return "Copie en doublon - fichier original dans la categorie source.";
+  }
+
+  // Fallback based on file extension
+  if (ext === "pdf") return "Document PDF." + isinNote;
+  if (ext === "xlsx" || ext === "xls") return "Fichier tableur." + isinNote;
+  if (ext === "pptx" || ext === "ppt") return "Presentation." + isinNote;
+  return "Document." + isinNote;
+}
+
+
+
 const CAT_DETAILS: Record<string, { desc: string; contenu: string }> = {
   "01_Presentations": {
     desc: "Supports de presentation commerciale et strategique pour differentes audiences.",
@@ -426,19 +547,24 @@ export default function ResumePage() {
                         <table className="w-full text-sm">
                           <thead className="sticky top-0 z-10">
                             <tr className="bg-gray-50 text-gray-500 text-xs">
-                              <th className="text-left px-4 py-2 font-medium">Type</th>
-                              <th className="text-left px-3 py-2 font-medium">Document</th>
-                              <th className="text-left px-3 py-2 font-medium w-20">Date</th>
+                              <th className="text-left px-4 py-2 font-medium w-20">Type</th>
+                              <th className="text-left px-3 py-2 font-medium" colSpan={2}>Document</th>
                               <th className="text-center px-2 py-2 font-medium w-16 no-print">Action</th>
                             </tr>
                           </thead>
                           <tbody>
                             {cat.docs.map((doc, idx) => (
-                              <tr key={doc.id} className={idx % 2 === 0 ? "bg-white" : "bg-gray-50/40"}>
-                                <td className="px-4 py-1.5"><span className="text-xs px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 whitespace-nowrap">{getDocType(doc.name)}</span></td>
-                                <td className="px-3 py-1.5 text-gray-700 text-xs">{doc.name}</td>
-                                <td className="px-3 py-1.5 text-gray-400 text-xs whitespace-nowrap">{formatDate(doc.created_at)}</td>
-                                <td className="px-2 py-1.5 text-center no-print">
+                              <tr key={doc.id + "-main"} className={idx % 2 === 0 ? "bg-white" : "bg-gray-50/30"}>
+                                <td className="px-4 pt-2.5 pb-0 align-top"><span className="text-xs px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 whitespace-nowrap">{getDocType(doc.name)}</span></td>
+                                <td className="px-3 pt-2.5 pb-0" colSpan={2}>
+                                  <p className="text-xs font-medium text-gray-800 leading-snug">{doc.name}</p>
+                                  <p className="text-xs text-gray-400 mt-1 leading-relaxed">{generateFileSummary(doc.name, cat.id)}</p>
+                                  <div className="flex items-center gap-3 text-xs text-gray-300 mt-1 pb-2">
+                                    <span>{formatDate(doc.created_at)}</span>
+                                    {doc.name.match(/[A-Z]{2}[A-Z0-9]{9}[0-9]/) && <span className="font-mono text-emerald-400">{doc.name.match(/[A-Z]{2}[A-Z0-9]{9}[0-9]/)?.[0]}</span>}
+                                  </div>
+                                </td>
+                                <td className="px-2 pt-2.5 pb-0 text-center align-top no-print">
                                   <a href={doc.file_url} target="_blank" rel="noopener noreferrer" className="text-xs text-violet hover:underline font-medium">Voir</a>
                                 </td>
                               </tr>
