@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import * as XLSX from "xlsx";
 
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY || "";
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
@@ -58,9 +59,56 @@ async function moveFile(from: string, to: string) {
 }
 
 async function generateFile(fileName: string, content: string, folder: string) {
-  const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
   const path = folder ? `${folder}/${fileName}` : `uploads/${fileName}`;
-  const { error } = await supabase.storage.from("strickin-docs").upload(path, blob, { upsert: true });
+  const ext = fileName.split(".").pop()?.toLowerCase() || "";
+
+  let fileBuffer: Buffer | Uint8Array;
+  let contentType = "text/plain;charset=utf-8";
+
+  if (ext === "xlsx") {
+    // Parse content as JSON array of arrays or JSON array of objects
+    try {
+      const parsed = JSON.parse(content);
+      const wb = XLSX.utils.book_new();
+
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        if (Array.isArray(parsed[0])) {
+          // Array of arrays — first row = headers
+          const ws = XLSX.utils.aoa_to_sheet(parsed);
+          XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
+        } else if (typeof parsed[0] === "object") {
+          // Array of objects
+          const ws = XLSX.utils.json_to_sheet(parsed);
+          XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
+        }
+      } else if (typeof parsed === "object" && !Array.isArray(parsed)) {
+        // Object with sheet names as keys
+        for (const [sheetName, sheetData] of Object.entries(parsed)) {
+          if (Array.isArray(sheetData) && sheetData.length > 0) {
+            const ws = Array.isArray((sheetData as unknown[])[0])
+              ? XLSX.utils.aoa_to_sheet(sheetData as unknown[][])
+              : XLSX.utils.json_to_sheet(sheetData as object[]);
+            XLSX.utils.book_append_sheet(wb, ws, sheetName.substring(0, 31));
+          }
+        }
+      }
+
+      const xlsxBuffer = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
+      fileBuffer = xlsxBuffer;
+      contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+    } catch {
+      return { error: "Le contenu pour un fichier .xlsx doit être un JSON valide (tableau d'objets ou tableau de tableaux). Exemple : [{\"Nom\":\"Alice\",\"Age\":30},{\"Nom\":\"Bob\",\"Age\":25}]" };
+    }
+  } else {
+    // Text-based files
+    fileBuffer = Buffer.from(content, "utf-8");
+    if (ext === "html") contentType = "text/html;charset=utf-8";
+    else if (ext === "csv") contentType = "text/csv;charset=utf-8";
+    else if (ext === "json") contentType = "application/json;charset=utf-8";
+    else if (ext === "md") contentType = "text/markdown;charset=utf-8";
+  }
+
+  const { error } = await supabase.storage.from("strickin-docs").upload(path, fileBuffer, { upsert: true, contentType });
   if (error) return { error: error.message };
   const { data: urlData } = supabase.storage.from("strickin-docs").getPublicUrl(path);
   return { success: true, path, url: urlData?.publicUrl || "" };
@@ -95,13 +143,13 @@ const TOOLS = [
   },
   {
     name: "generate_file",
-    description: "Génère et crée un nouveau fichier texte dans le storage. Peut créer des fichiers .md, .txt, .html, .csv, .json, .ts, .js, etc. Le contenu est du texte brut.",
+    description: "Génère et crée un nouveau fichier dans le storage. Supporte les fichiers texte (.md, .txt, .html, .csv, .json, .ts, .js) ET les fichiers Excel (.xlsx). Pour les .xlsx, le contenu doit être un JSON stringifié : soit un tableau d'objets [{\"col1\":\"val1\",...}], soit un tableau de tableaux [[\"header1\",\"header2\"],[\"val1\",\"val2\"]], soit un objet avec des noms de feuilles comme clés {\"Feuille1\":[...],\"Feuille2\":[...]}.",
     input_schema: {
       type: "object",
       properties: {
-        file_name: { type: "string", description: "Nom du fichier avec extension (ex: 'rapport.md', 'data.csv')" },
-        content: { type: "string", description: "Contenu textuel du fichier" },
-        folder: { type: "string", description: "Dossier cible (ex: '02_Documents'). Par défaut 'uploads'." },
+        file_name: { type: "string", description: "Nom du fichier avec extension (ex: 'rapport.md', 'data.csv', 'tableau.xlsx')" },
+        content: { type: "string", description: "Contenu du fichier. Pour .xlsx : JSON stringifié (tableau d'objets ou tableau de tableaux). Pour les autres : texte brut." },
+        folder: { type: "string", description: "Dossier cible (ex: '03_Tableurs'). Par défaut 'uploads'." },
       },
       required: ["file_name", "content"],
     },
@@ -157,10 +205,18 @@ Tu as accès à des outils pour gérer les fichiers dans le storage Supabase :
 - **delete_file** : supprimer un fichier
 - **delete_multiple_files** : supprimer plusieurs fichiers
 - **move_file** : déplacer/renommer un fichier
-- **generate_file** : créer un nouveau fichier (markdown, CSV, JSON, HTML, texte, code, etc.)
+- **generate_file** : créer un nouveau fichier (markdown, CSV, JSON, HTML, texte, code, **et fichiers Excel .xlsx** !)
 
 Quand on te demande de générer un fichier, utilise l'outil generate_file pour le créer directement dans le storage.
 Pour les fichiers générés, utilise le dossier approprié selon le type de contenu, ou 'uploads' par défaut.
+
+## Génération de fichiers Excel (.xlsx)
+Pour créer un fichier Excel, utilise generate_file avec une extension .xlsx et passe le contenu sous forme de JSON stringifié.
+Formats supportés :
+- **Tableau d'objets** : [{"Nom":"Alice","Age":30},{"Nom":"Bob","Age":25}] → crée un tableau avec headers automatiques
+- **Tableau de tableaux** : [["Nom","Age"],["Alice",30],["Bob",25]] → première ligne = headers
+- **Multi-feuilles** : {"Ventes":[...],"Stocks":[...]} → crée plusieurs onglets
+Utilise le dossier '03_Tableurs' pour les fichiers Excel.
 
 ## Pour les business plans
 Quand on te demande de générer un business plan, pose les questions suivantes une par une :
@@ -203,7 +259,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Messages requis" }, { status: 400 });
     }
 
-    const apiMessages: any[] = messages.map((m: { role: string; content: string }) => ({
+    const apiMessages = messages.map((m: { role: string; content: string }) => ({
       role: m.role,
       content: m.content,
     }));
