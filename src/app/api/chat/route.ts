@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import * as XLSX from "xlsx";
+import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } from "docx";
 
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY || "";
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
@@ -99,6 +100,56 @@ async function generateFile(fileName: string, content: string, folder: string) {
     } catch {
       return { error: "Le contenu pour un fichier .xlsx doit être un JSON valide (tableau d'objets ou tableau de tableaux). Exemple : [{\"Nom\":\"Alice\",\"Age\":30},{\"Nom\":\"Bob\",\"Age\":25}]" };
     }
+  } else if (ext === "docx") {
+    // Generate Word document from JSON structure
+    try {
+      const parsed = JSON.parse(content);
+      // Expected format: { title?: string, sections: [{ heading?: string, text: string | string[] }] }
+      // Or simple: { paragraphs: string[] }
+      // Or simplest: string[] (array of paragraphs)
+      const children: Paragraph[] = [];
+
+      if (Array.isArray(parsed)) {
+        // Simple array of strings → paragraphs
+        for (const item of parsed) {
+          children.push(new Paragraph({ children: [new TextRun({ text: String(item), size: 24 })] }));
+        }
+      } else if (typeof parsed === "object") {
+        if (parsed.title) {
+          children.push(new Paragraph({
+            children: [new TextRun({ text: parsed.title, bold: true, size: 36 })],
+            heading: HeadingLevel.HEADING_1,
+            alignment: AlignmentType.CENTER,
+            spacing: { after: 300 },
+          }));
+        }
+        const items = parsed.sections || parsed.paragraphs || [];
+        for (const item of items) {
+          if (typeof item === "string") {
+            children.push(new Paragraph({ children: [new TextRun({ text: item, size: 24 })], spacing: { after: 200 } }));
+          } else if (typeof item === "object") {
+            if (item.heading) {
+              children.push(new Paragraph({
+                children: [new TextRun({ text: item.heading, bold: true, size: 28 })],
+                heading: HeadingLevel.HEADING_2,
+                spacing: { before: 300, after: 150 },
+              }));
+            }
+            const texts = Array.isArray(item.text) ? item.text : item.text ? [item.text] : [];
+            for (const t of texts) {
+              children.push(new Paragraph({ children: [new TextRun({ text: String(t), size: 24 })], spacing: { after: 200 } }));
+            }
+          }
+        }
+      }
+
+      const doc = new Document({ sections: [{ children }] });
+      const docxBuf = await Packer.toBuffer(doc);
+      fileBuffer = docxBuf;
+      contentType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+    } catch {
+      return { error: "Le contenu pour un fichier .docx doit être un JSON valide. Formats: tableau de strings [\"para1\",\"para2\"], ou objet {title:\"...\", sections:[{heading:\"...\", text:\"...\"}]}" };
+    }
   } else {
     // Text-based files
     fileBuffer = Buffer.from(content, "utf-8");
@@ -143,7 +194,7 @@ const TOOLS = [
   },
   {
     name: "generate_file",
-    description: "Génère et crée un nouveau fichier dans le storage. Supporte les fichiers texte (.md, .txt, .html, .csv, .json, .ts, .js) ET les fichiers Excel (.xlsx). Pour les .xlsx, le contenu doit être un JSON stringifié : soit un tableau d'objets [{\"col1\":\"val1\",...}], soit un tableau de tableaux [[\"header1\",\"header2\"],[\"val1\",\"val2\"]], soit un objet avec des noms de feuilles comme clés {\"Feuille1\":[...],\"Feuille2\":[...]}.",
+    description: "Génère et crée un nouveau fichier dans le storage. Supporte les fichiers texte (.md, .txt, .html, .csv, .json, .ts, .js), les fichiers Excel (.xlsx) ET les documents Word (.docx). Pour .xlsx: JSON stringifié (tableau d'objets, tableau de tableaux, ou objet multi-feuilles). Pour .docx: JSON stringifié — soit un tableau de strings [\"para1\",\"para2\"], soit un objet {title:\"...\", sections:[{heading:\"...\", text:\"...\"}]}.",
     input_schema: {
       type: "object",
       properties: {
@@ -205,7 +256,7 @@ Tu as accès à des outils pour gérer les fichiers dans le storage Supabase :
 - **delete_file** : supprimer un fichier
 - **delete_multiple_files** : supprimer plusieurs fichiers
 - **move_file** : déplacer/renommer un fichier
-- **generate_file** : créer un nouveau fichier (markdown, CSV, JSON, HTML, texte, code, **et fichiers Excel .xlsx** !)
+- **generate_file** : créer un nouveau fichier (markdown, CSV, JSON, HTML, texte, code, **fichiers Excel .xlsx** et **documents Word .docx** !)
 
 Quand on te demande de générer un fichier, utilise l'outil generate_file pour le créer directement dans le storage.
 Pour les fichiers générés, utilise le dossier approprié selon le type de contenu, ou 'uploads' par défaut.
@@ -217,6 +268,13 @@ Formats supportés :
 - **Tableau de tableaux** : [["Nom","Age"],["Alice",30],["Bob",25]] → première ligne = headers
 - **Multi-feuilles** : {"Ventes":[...],"Stocks":[...]} → crée plusieurs onglets
 Utilise le dossier '03_Tableurs' pour les fichiers Excel.
+
+## Génération de documents Word (.docx)
+Pour créer un document Word, utilise generate_file avec une extension .docx et passe le contenu sous forme de JSON stringifié.
+Formats supportés :
+- **Tableau de paragraphes** : ["Premier paragraphe", "Deuxième paragraphe"] → crée un document simple
+- **Document structuré** : {"title":"Mon Titre", "sections":[{"heading":"Section 1", "text":"Contenu..."}, {"heading":"Section 2", "text":["Paragraphe 1", "Paragraphe 2"]}]} → crée un document avec titre, headings et paragraphes
+Utilise le dossier '02_Documents' pour les fichiers Word.
 
 ## Pour les business plans
 Quand on te demande de générer un business plan, pose les questions suivantes une par une :
