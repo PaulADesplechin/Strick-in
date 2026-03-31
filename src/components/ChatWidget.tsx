@@ -69,6 +69,8 @@ export default function ChatWidget() {
   const [attachedFiles, setAttachedFiles] = useState<{name: string; path: string; size: number}[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const chatFileRef = useRef<HTMLInputElement>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const dragCounter = useRef(0);
 
   // File management state
   const [activeTab, setActiveTab] = useState<"chat" | "files">("chat");
@@ -315,6 +317,57 @@ export default function ChatWidget() {
     setAttachedFiles(prev => prev.filter(f => f.name !== name));
   }
 
+  // Drag & drop handlers
+  function handleDragEnter(e: React.DragEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounter.current++;
+    if (e.dataTransfer.types.includes("Files")) {
+      setIsDragging(true);
+    }
+  }
+  function handleDragLeave(e: React.DragEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounter.current--;
+    if (dragCounter.current === 0) {
+      setIsDragging(false);
+    }
+  }
+  function handleDragOver(e: React.DragEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+  }
+  async function handleDrop(e: React.DragEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    dragCounter.current = 0;
+    const droppedFiles = e.dataTransfer.files;
+    if (!droppedFiles || droppedFiles.length === 0) return;
+    setIsUploading(true);
+    try {
+      for (let i = 0; i < droppedFiles.length; i++) {
+        const file = droppedFiles[i];
+        const folder = "uploads";
+        const path = `${folder}/${file.name}`;
+        const { error } = await supabase.storage
+          .from("strickin-docs")
+          .upload(path, file, { upsert: true });
+        if (error) {
+          console.error(`Upload error for ${file.name}:`, error);
+          alert(`Erreur upload: ${file.name} — ${error.message}`);
+        } else {
+          setAttachedFiles(prev => [...prev, { name: file.name, path, size: file.size }]);
+        }
+      }
+    } catch (err) {
+      console.error("Drop upload error:", err);
+    } finally {
+      setIsUploading(false);
+    }
+  }
+
   function handleKeyDown(e: React.KeyboardEvent) {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -465,79 +518,28 @@ export default function ChatWidget() {
                   </div>
 
                   {/* Input */}
-                  <div className="shrink-0 border-t border-gray-100 px-4 py-3 bg-white">
+                  <div
+                    className={`shrink-0 border-t border-gray-100 px-4 py-3 bg-white relative transition-colors ${isDragging ? "bg-violet/5 border-violet" : ""}`}
+                    onDragEnter={handleDragEnter}
+                    onDragLeave={handleDragLeave}
+                    onDragOver={handleDragOver}
+                    onDrop={handleDrop}
+                  >
+                    {/* Drag overlay */}
+                    {isDragging && (
+                      <div className="absolute inset-0 z-10 flex items-center justify-center bg-violet/10 border-2 border-dashed border-violet rounded-xl pointer-events-none">
+                        <div className="flex flex-col items-center gap-1">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-violet"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>
+                          <span className="text-xs font-medium text-violet">Déposez vos fichiers ici</span>
+                        </div>
+                      </div>
+                    )}
                     {/* Attached files preview */}
                     {attachedFiles.length > 0 && (
                       <div className="flex flex-wrap gap-1.5 mb-2">
                         {attachedFiles.map(f => (
                           <div key={f.name} className="flex items-center gap-1.5 bg-violet/10 text-violet rounded-lg px-2.5 py-1.5 text-xs">
-                            <span>{getFileEmoji(f.name)}</span>
-                            <span className="max-w-[120px] truncate font-medium">{f.name}</span>
-                            <button
-                              onClick={() => removeAttachment(f.name)}
-                              className="w-4 h-4 rounded-full bg-violet/20 hover:bg-violet/40 flex items-center justify-center text-violet transition-all ml-0.5"
-                            >
-                              <svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    {/* Hidden file input for chat attachments */}
-                    <input
-                      ref={chatFileRef}
-                      type="file"
-                      multiple
-                      className="hidden"
-                      onChange={handleChatAttach}
-                      accept=".pdf,.pptx,.docx,.xlsx,.csv,.html,.json,.ts,.js,.png,.jpg,.svg,.txt,.md"
-                    />
-                    <div className="flex items-end gap-2">
-                      {/* Paperclip button */}
-                      <button
-                        onClick={() => chatFileRef.current?.click()}
-                        disabled={isUploading || isLoading}
-                        className="w-10 h-10 rounded-xl border border-gray-200 text-gray-400 flex items-center justify-center hover:text-violet hover:border-violet hover:bg-violet/5 disabled:opacity-40 transition-all shrink-0"
-                        title="Joindre un fichier"
-                      >
-                        {isUploading ? (
-                          <span className="w-4 h-4 border-2 border-violet border-t-transparent rounded-full animate-spin" />
-                        ) : (
-                          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
-                        )}
-                      </button>
-                      <textarea
-                        ref={inputRef}
-                        value={input}
-                        onChange={e => setInput(e.target.value)}
-                        onKeyDown={handleKeyDown}
-                        placeholder="Posez votre question..."
-                        rows={1}
-                        className="flex-1 resize-none text-sm px-4 py-2.5 rounded-xl border border-gray-200 outline-none focus:border-violet focus:ring-2 focus:ring-violet/20 transition-all max-h-24 overflow-y-auto"
-                        style={{ minHeight: "42px" }}
-                        disabled={isLoading}
-                      />
-                      <button
-                        onClick={handleSend}
-                        disabled={(!input.trim() && attachedFiles.length === 0) || isLoading}
-                        className="w-10 h-10 rounded-xl bg-violet text-white flex items-center justify-center hover:bg-violet/90 disabled:opacity-40 transition-all shrink-0"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
-                      </button>
-                    </div>
-                    <p className="text-center text-xs text-gray-300 mt-2">Propulsé par Claude &middot; Strick&apos;in AI</p>
-                  </div>
-                </>
-              ) : (
-                /* FILES TAB */
-                <div className="flex-1 flex flex-col overflow-hidden">
-                  {/* Category selector + search */}
-                  <div className="px-4 pt-3 pb-2 space-y-2 shrink-0 border-b border-gray-50">
-                    <select
-                      value={selectedCategory}
-                      onChange={e => setSelectedCategory(e.target.value)}
-                      className="w-full text-xs px-3 py-2 rounded-lg border border-gray-200 outline-none focus:border-violet bg-white"
-                    >
+                                 >
                       <option value="">Racine (tous les dossiers)</option>
                       {categoryOptions.map(c => (
                         <option key={c.id} value={c.id}>{c.label}</option>
@@ -606,6 +608,77 @@ export default function ChatWidget() {
                             key={file.id || file.name}
                             className="group flex items-center gap-2.5 p-2.5 rounded-xl hover:bg-gray-50 transition-all border border-transparent hover:border-gray-100"
                           >
+                            <span className="text-lg shrink-0">{getFileEmoji(file.name)}</span>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-medium text-gray-800 truncate" title={file.name}>
+                                {file.name}
+                              </p>
+                              <p className="text-[10px] text-gray-400">
+                                {formatSize(file.metadata?.size || 0)}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                              {/* Download */}
+                              <button
+                                onClick={() => handleDownload(file.name)}
+                                className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:text-violet hover:bg-violet/10 transition-all"
+                                title="Télécharger"
+                              >
+                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
+                              </button>
+                              {/* Delete */}
+                              {deleteConfirm === file.name ? (
+                                <div className="flex items-center gap-1">
+                                  <button
+                                    onClick={() => handleDelete(file.name)}
+                                    className="w-7 h-7 rounded-lg flex items-center justify-center bg-red-500 text-white hover:bg-red-600 transition-all text-[10px] font-bold"
+                                    title="Confirmer"
+                                  >
+                                    ✓
+                                  </button>
+                                  <button
+                                    onClick={() => setDeleteConfirm(null)}
+                                    className="w-7 h-7 rounded-lg flex items-center justify-center bg-gray-200 text-gray-600 hover:bg-gray-300 transition-all text-[10px] font-bold"
+                                    title="Annuler"
+                                  >
+                                    ✕
+                                  </button>
+                                </div>
+                              ) : (
+                                <button
+                                  onClick={() => setDeleteConfirm(file.name)}
+                                  className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 transition-all"
+                                  title="Supprimer"
+                                >
+                                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Files footer */}
+                  <div className="shrink-0 border-t border-gray-100 px-4 py-2.5 bg-gray-50/50">
+                    <p className="text-center text-[10px] text-gray-400">
+                      {filteredFiles.length} fichier{filteredFiles.length !== 1 ? "s" : ""} {selectedCategory ? `dans ${categoryOptions.find(c => c.id === selectedCategory)?.label || selectedCategory}` : ""}
+                    </p>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
+
+      <style jsx>{`
+        @keyframes animate-in {
+          from { opacity: 0; transform: translateY(16px) scale(0.95); }
+          to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        .animate-                     >
                             <span className="text-lg shrink-0">{getFileEmoji(file.name)}</span>
                             <div className="flex-1 min-w-0">
                               <p className="text-xs font-medium text-gray-800 truncate" title={file.name}>
