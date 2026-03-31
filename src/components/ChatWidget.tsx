@@ -539,7 +539,60 @@ export default function ChatWidget() {
                       <div className="flex flex-wrap gap-1.5 mb-2">
                         {attachedFiles.map(f => (
                           <div key={f.name} className="flex items-center gap-1.5 bg-violet/10 text-violet rounded-lg px-2.5 py-1.5 text-xs">
-                                 >
+                            <span>{getFileEmoji(f.name)}</span>
+                            <span className="max-w-[120px] truncate">{f.name}</span>
+                            <button onClick={() => removeAttachment(f.name)} className="hover:text-red-500 transition-colors">
+                              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Chat input area */}
+                    <div className="flex items-end gap-2">
+                      <button
+                        onClick={() => chatFileRef.current?.click()}
+                        disabled={isUploading}
+                        className="shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-violet hover:bg-violet/10 transition-all"
+                        title="Joindre un fichier"
+                      >
+                        {isUploading ? (
+                          <span className="w-4 h-4 border-2 border-violet border-t-transparent rounded-full animate-spin" />
+                        ) : (
+                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+                        )}
+                      </button>
+                      <input ref={chatFileRef} type="file" multiple className="hidden" onChange={handleChatAttach} />
+                      <textarea
+                        ref={inputRef}
+                        value={input}
+                        onChange={e => setInput(e.target.value)}
+                        onKeyDown={handleKeyDown}
+                        placeholder="Posez votre question..."
+                        rows={1}
+                        className="flex-1 resize-none text-sm px-3 py-2 rounded-xl border border-gray-200 outline-none focus:border-violet focus:ring-2 focus:ring-violet/20 transition-all max-h-24"
+                      />
+                      <button
+                        onClick={handleSend}
+                        disabled={isLoading || (!input.trim() && attachedFiles.length === 0)}
+                        className="shrink-0 w-8 h-8 rounded-lg bg-violet text-white flex items-center justify-center hover:bg-violet/90 disabled:opacity-30 transition-all"
+                        title="Envoyer"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
+                      </button>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="flex-1 flex flex-col overflow-hidden">
+                  {/* Category select and search */}
+                  <div className="px-4 py-3 border-b border-gray-100 space-y-2 shrink-0">
+                    <select
+                      value={selectedCategory}
+                      onChange={e => { setSelectedCategory(e.target.value); setFileSearch(""); }}
+                      className="w-full text-xs px-3 py-2 rounded-lg border border-gray-200 outline-none focus:border-violet focus:ring-2 focus:ring-violet/20 transition-all"
+                    >
                       <option value="">Racine (tous les dossiers)</option>
                       {categoryOptions.map(c => (
                         <option key={c.id} value={c.id}>{c.label}</option>
@@ -608,15 +661,18 @@ export default function ChatWidget() {
                             key={file.id || file.name}
                             className="group flex items-center gap-2.5 p-2.5 rounded-xl hover:bg-gray-50 transition-all border border-transparent hover:border-gray-100"
                           >
-                            <span className="text-lg shrink-0">{getFileEmoji(file.name)}</span>
+                            {/* File emoji */}
+                            <span className="text-base shrink-0">{getFileEmoji(file.name)}</span>
+
+                            {/* File info */}
                             <div className="flex-1 min-w-0">
-                              <p className="text-xs font-medium text-gray-800 truncate" title={file.name}>
-                                {file.name}
-                              </p>
+                              <p className="text-xs font-medium text-gray-800 truncate">{file.name}</p>
                               <p className="text-[10px] text-gray-400">
-                                {formatSize(file.metadata?.size || 0)}
+                                {formatSize(file.metadata?.size || 0)} • {new Date(file.created_at).toLocaleDateString()}
                               </p>
                             </div>
+
+                            {/* Actions */}
                             <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
                               {/* Download */}
                               <button
@@ -626,6 +682,7 @@ export default function ChatWidget() {
                               >
                                 <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
                               </button>
+
                               {/* Delete */}
                               {deleteConfirm === file.name ? (
                                 <div className="flex items-center gap-1">
@@ -673,78 +730,7 @@ export default function ChatWidget() {
         </div>
       )}
 
-      <style jsx>{`
-        @keyframes animate-in {
-          from { opacity: 0; transform: translateY(16px) scale(0.95); }
-          to { opacity: 1; transform: translateY(0) scale(1); }
-        }
-        .animate-                     >
-                            <span className="text-lg shrink-0">{getFileEmoji(file.name)}</span>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-xs font-medium text-gray-800 truncate" title={file.name}>
-                                {file.name}
-                              </p>
-                              <p className="text-[10px] text-gray-400">
-                                {formatSize(file.metadata?.size || 0)}
-                              </p>
-                            </div>
-                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                              {/* Download */}
-                              <button
-                                onClick={() => handleDownload(file.name)}
-                                className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:text-violet hover:bg-violet/10 transition-all"
-                                title="Télécharger"
-                              >
-                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
-                              </button>
-                              {/* Delete */}
-                              {deleteConfirm === file.name ? (
-                                <div className="flex items-center gap-1">
-                                  <button
-                                    onClick={() => handleDelete(file.name)}
-                                    className="w-7 h-7 rounded-lg flex items-center justify-center bg-red-500 text-white hover:bg-red-600 transition-all text-[10px] font-bold"
-                                    title="Confirmer"
-                                  >
-                                    ✓
-                                  </button>
-                                  <button
-                                    onClick={() => setDeleteConfirm(null)}
-                                    className="w-7 h-7 rounded-lg flex items-center justify-center bg-gray-200 text-gray-600 hover:bg-gray-300 transition-all text-[10px] font-bold"
-                                    title="Annuler"
-                                  >
-                                    ✕
-                                  </button>
-                                </div>
-                              ) : (
-                                <button
-                                  onClick={() => setDeleteConfirm(file.name)}
-                                  className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 transition-all"
-                                  title="Supprimer"
-                                >
-                                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
-                                </button>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Files footer */}
-                  <div className="shrink-0 border-t border-gray-100 px-4 py-2.5 bg-gray-50/50">
-                    <p className="text-center text-[10px] text-gray-400">
-                      {filteredFiles.length} fichier{filteredFiles.length !== 1 ? "s" : ""} {selectedCategory ? `dans ${categoryOptions.find(c => c.id === selectedCategory)?.label || selectedCategory}` : ""}
-                    </p>
-                  </div>
-                </div>
-              )}
-            </>
-          )}
-        </div>
-      )}
-
-      <style jsx>{`
+<style jsx>{`
         @keyframes animate-in {
           from { opacity: 0; transform: translateY(16px) scale(0.95); }
           to { opacity: 1; transform: translateY(0) scale(1); }
