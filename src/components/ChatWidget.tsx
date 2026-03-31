@@ -65,6 +65,11 @@ export default function ChatWidget() {
   const [isLoading, setIsLoading] = useState(false);
   const [showPulse, setShowPulse] = useState(true);
 
+  // Chat file attachment state
+  const [attachedFiles, setAttachedFiles] = useState<{name: string; path: string; size: number}[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
+  const chatFileRef = useRef<HTMLInputElement>(null);
+
   // File management state
   const [activeTab, setActiveTab] = useState<"chat" | "files">("chat");
   const [files, setFiles] = useState<StorageFile[]>([]);
@@ -142,7 +147,7 @@ export default function ChatWidget() {
 
         if (error) {
           console.error(`Upload error for ${file.name}:`, error);
-          alert(`Erreur upload: ${file.name} \u2014 ${error.message}`);
+          alert(`Erreur upload: ${file.name} — ${error.message}`);
         }
       }
       // Reload files
@@ -210,17 +215,28 @@ export default function ChatWidget() {
 
   async function handleSend() {
     const text = input.trim();
-    if (!text || isLoading) return;
+    if (!text && attachedFiles.length === 0) return;
+    if (isLoading) return;
+
+    // Build message content with attached file info
+    let fullContent = text;
+    if (attachedFiles.length > 0) {
+      const fileInfo = attachedFiles.map(f => `- ${f.name} (${formatSize(f.size)}) → uploads/${f.name}`).join("\n");
+      fullContent = text
+        ? `${text}\n\n📎 Fichiers joints :\n${fileInfo}`
+        : `📎 Fichiers uploadés :\n${fileInfo}`;
+    }
 
     const userMsg: Message = {
       id: Date.now().toString(),
       role: "user",
-      content: text,
+      content: fullContent,
       timestamp: new Date(),
     };
 
     setMessages(prev => [...prev, userMsg]);
     setInput("");
+    setAttachedFiles([]);
     setIsLoading(true);
 
     try {
@@ -263,6 +279,40 @@ export default function ChatWidget() {
     } finally {
       setIsLoading(false);
     }
+  }
+
+  async function handleChatAttach(e: React.ChangeEvent<HTMLInputElement>) {
+    const fileList = e.target.files;
+    if (!fileList || fileList.length === 0) return;
+    setIsUploading(true);
+
+    try {
+      for (let i = 0; i < fileList.length; i++) {
+        const file = fileList[i];
+        const folder = "uploads";
+        const path = `${folder}/${file.name}`;
+
+        const { error } = await supabase.storage
+          .from("strickin-docs")
+          .upload(path, file, { upsert: true });
+
+        if (error) {
+          console.error(`Upload error for ${file.name}:`, error);
+          alert(`Erreur upload: ${file.name} — ${error.message}`);
+        } else {
+          setAttachedFiles(prev => [...prev, { name: file.name, path, size: file.size }]);
+        }
+      }
+    } catch (err) {
+      console.error("Chat attach error:", err);
+    } finally {
+      setIsUploading(false);
+      if (chatFileRef.current) chatFileRef.current.value = "";
+    }
+  }
+
+  function removeAttachment(name: string) {
+    setAttachedFiles(prev => prev.filter(f => f.name !== name));
   }
 
   function handleKeyDown(e: React.KeyboardEvent) {
@@ -388,7 +438,7 @@ export default function ChatWidget() {
                     {messages.map(msg => (
                       <div key={msg.id} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
                         <div className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
-msg.role === "user"
+                          msg.role === "user"
                             ? "bg-violet text-white rounded-br-md"
                             : "bg-gray-50 text-gray-800 rounded-bl-md border border-gray-100"
                         }`}>
@@ -416,7 +466,46 @@ msg.role === "user"
 
                   {/* Input */}
                   <div className="shrink-0 border-t border-gray-100 px-4 py-3 bg-white">
+                    {/* Attached files preview */}
+                    {attachedFiles.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 mb-2">
+                        {attachedFiles.map(f => (
+                          <div key={f.name} className="flex items-center gap-1.5 bg-violet/10 text-violet rounded-lg px-2.5 py-1.5 text-xs">
+                            <span>{getFileEmoji(f.name)}</span>
+                            <span className="max-w-[120px] truncate font-medium">{f.name}</span>
+                            <button
+                              onClick={() => removeAttachment(f.name)}
+                              className="w-4 h-4 rounded-full bg-violet/20 hover:bg-violet/40 flex items-center justify-center text-violet transition-all ml-0.5"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {/* Hidden file input for chat attachments */}
+                    <input
+                      ref={chatFileRef}
+                      type="file"
+                      multiple
+                      className="hidden"
+                      onChange={handleChatAttach}
+                      accept=".pdf,.pptx,.docx,.xlsx,.csv,.html,.json,.ts,.js,.png,.jpg,.svg,.txt,.md"
+                    />
                     <div className="flex items-end gap-2">
+                      {/* Paperclip button */}
+                      <button
+                        onClick={() => chatFileRef.current?.click()}
+                        disabled={isUploading || isLoading}
+                        className="w-10 h-10 rounded-xl border border-gray-200 text-gray-400 flex items-center justify-center hover:text-violet hover:border-violet hover:bg-violet/5 disabled:opacity-40 transition-all shrink-0"
+                        title="Joindre un fichier"
+                      >
+                        {isUploading ? (
+                          <span className="w-4 h-4 border-2 border-violet border-t-transparent rounded-full animate-spin" />
+                        ) : (
+                          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+                        )}
+                      </button>
                       <textarea
                         ref={inputRef}
                         value={input}
@@ -429,8 +518,8 @@ msg.role === "user"
                         disabled={isLoading}
                       />
                       <button
-onClick={handleSend}
-                        disabled={!input.trim() || isLoading}
+                        onClick={handleSend}
+                        disabled={(!input.trim() && attachedFiles.length === 0) || isLoading}
                         className="w-10 h-10 rounded-xl bg-violet text-white flex items-center justify-center hover:bg-violet/90 disabled:opacity-40 transition-all shrink-0"
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
@@ -531,7 +620,7 @@ onClick={handleSend}
                               <button
                                 onClick={() => handleDownload(file.name)}
                                 className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:text-violet hover:bg-violet/10 transition-all"
-                title="Télécharger"
+                                title="Télécharger"
                               >
                                 <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
                               </button>
