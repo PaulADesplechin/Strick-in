@@ -203,7 +203,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Messages requis" }, { status: 400 });
     }
 
-    const apiMessages = messages.map((m: { role: string; content: string }) => ({
+    const apiMessages: any[] = messages.map((m: { role: string; content: string }) => ({
       role: m.role,
       content: m.content,
     }));
