@@ -75,11 +75,11 @@ function formatSize(bytes: number): string {
 function getFileEmoji(name: string): string {
   const ext = name.split(".").pop()?.toLowerCase() || "";
   const map: Record<string, string> = {
-    pdf: "📄", pptx: "📊", docx: "📝", xlsx: "📈",
-    html: "🌐", png: "🖼️", jpg: "🖼️", svg: "🎨",
-    json: "📋", ts: "💻", js: "💻", csv: "📊",
+    pdf: "ð", pptx: "ð", docx: "ð", xlsx: "ð",
+    html: "ð", png: "ð¼ï¸", jpg: "ð¼ï¸", svg: "ð¨",
+    json: "ð", ts: "ð»", js: "ð»", csv: "ð",
   };
-  return map[ext] || "📁";
+  return map[ext] || "ð";
 }
 
 function getFileTag(name: string): FileTag {
@@ -298,8 +298,8 @@ export default function ChatWidget() {
           xhr.send(formData);
         });
 
-        addActivityLog(`Fichier uploadé: ${file.name}`);
-        showToast(`${file.name} uploadé avec succès`, "success");
+        addActivityLog(`Fichier uploadÃ©: ${file.name}`);
+        showToast(`${file.name} uploadÃ© avec succÃ¨s`, "success");
       }
       await loadFiles();
     } catch (err) {
@@ -323,8 +323,8 @@ export default function ChatWidget() {
       });
       if (!res.ok) throw new Error("Delete failed");
       setDeleteConfirm(null);
-      addActivityLog(`Fichier supprimé: ${fileName}`);
-      showToast("Fichier supprimé", "success");
+      addActivityLog(`Fichier supprimÃ©: ${fileName}`);
+      showToast("Fichier supprimÃ©", "success");
       await loadFiles();
     } catch (err) {
       console.error("Delete error:", err);
@@ -337,7 +337,7 @@ export default function ChatWidget() {
     const path = folder ? `${folder}/${fileName}` : fileName;
     const { data } = supabase.storage.from("strickin-docs").getPublicUrl(path);
     if (data?.publicUrl) {
-      addActivityLog(`Fichier téléchargé: ${fileName}`);
+      addActivityLog(`Fichier tÃ©lÃ©chargÃ©: ${fileName}`);
       const a = document.createElement("a");
       a.href = data.publicUrl;
       a.download = fileName;
@@ -365,10 +365,10 @@ export default function ChatWidget() {
       setMessages([{
         id: "welcome",
         role: "assistant",
-        content: "Bonjour ! Je suis l'assistant IA de **Strick'in**. Je peux vous aider sur :\n\n- **Questions sur les produits structurés** (Autocall, Phoenix, KIDs, etc.)\n- **Génération de business plans** pour la distribution\n- **Gestion des fichiers** (lister, supprimer, organiser)\n- **Génération de documents** (demandez-moi de créer un fichier !)\n\nComment puis-je vous aider ?",
+        content: "Bonjour ! Je suis l'assistant IA de **Strick'in**. Je peux vous aider sur :\n\n- **Questions sur les produits structurÃ©s** (Autocall, Phoenix, KIDs, etc.)\n- **GÃ©nÃ©ration de business plans** pour la distribution\n- **Gestion des fichiers** (lister, supprimer, organiser)\n- **GÃ©nÃ©ration de documents** (demandez-moi de crÃ©er un fichier !)\n\nComment puis-je vous aider ?",
         timestamp: new Date(),
       }]);
-      showToast("Authentification réussie", "success");
+      showToast("Authentification rÃ©ussie", "success");
     } else {
       setPasswordError(true);
       setPassword("");
@@ -383,10 +383,10 @@ export default function ChatWidget() {
 
     let fullContent = text;
     if (attachedFiles.length > 0) {
-      const fileInfo = attachedFiles.map(f => `- ${f.name} (${formatSize(f.size)}) → uploads/${f.name}`).join("\n");
+      const fileInfo = attachedFiles.map(f => `- ${f.name} (${formatSize(f.size)}) â uploads/${f.name}`).join("\n");
       fullContent = text
-        ? `${text}\n\n📎 Fichiers joints :\n${fileInfo}`
-        : `📎 Fichiers uploadés :\n${fileInfo}`;
+        ? `${text}\n\nð Fichiers joints :\n${fileInfo}`
+        : `ð Fichiers uploadÃ©s :\n${fileInfo}`;
     }
 
     const userMsg: Message = {
@@ -464,7 +464,7 @@ export default function ChatWidget() {
         }]);
       }
 
-      if (text.toLowerCase().match(/suppr|delete|déplace|move|ajout|upload|créer|générer|fichier/)) {
+      if (text.toLowerCase().match(/suppr|delete|dÃ©place|move|ajout|upload|crÃ©er|gÃ©nÃ©rer|fichier/)) {
         if (activeTab === "files") loadFiles();
       }
 
@@ -520,7 +520,7 @@ export default function ChatWidget() {
         setAttachedFiles(prev => [...prev, { name: file.name, path: `${folder}/${file.name}`, size: file.size }]);
         addActivityLog(`Fichier joint: ${file.name}`);
       }
-      showToast("Fichiers attachés", "success");
+      showToast("Fichiers attachÃ©s", "success");
     } catch (err) {
       console.error("Chat attach error:", err);
       showToast("Erreur lors de l'attachement", "error");
@@ -585,10 +585,10 @@ export default function ChatWidget() {
 
         setAttachedFiles(prev => [...prev, { name: file.name, path: `${folder}/${file.name}`, size: file.size }]);
       }
-      showToast("Fichiers déposés avec succès", "success");
+      showToast("Fichiers dÃ©posÃ©s avec succÃ¨s", "success");
     } catch (err) {
       console.error("Drop upload error:", err);
-      showToast("Erreur lors du dépôt", "error");
+      showToast("Erreur lors du dÃ©pÃ´t", "error");
     } finally {
       setIsUploading(false);
     }
@@ -644,8 +644,8 @@ export default function ChatWidget() {
     document.body.appendChild(element);
     element.click();
     document.body.removeChild(element);
-    addActivityLog("Conversation exportée");
-    showToast("Conversation exportée", "success");
+    addActivityLog("Conversation exportÃ©e");
+    showToast("Conversation exportÃ©e", "success");
   }
 
   // ============= Helpers =============
@@ -669,7 +669,7 @@ export default function ChatWidget() {
           <div className={`sticky top-0 flex items-center justify-between p-4 border-b ${isDarkMode ? "border-gray-700" : "border-gray-200"}`}>
             <h3 className={`font-semibold ${isDarkMode ? "text-white" : "text-gray-900"}`}>{selectedFile.name}</h3>
             <button onClick={closeFilePreview} className={`p-1 hover:bg-gray-200 rounded ${isDarkMode ? "hover:bg-gray-700" : ""}`}>
-              ✕
+              â
             </button>
           </div>
           <div className="p-4">
@@ -681,9 +681,9 @@ export default function ChatWidget() {
             )}
             {!["png", "jpg", "jpeg", "gif", "svg", "pdf"].includes(ext) && url && (
               <div className="text-center py-8">
-                <p className={`mb-4 ${isDarkMode ? "text-gray-300" : "text-gray-600"}`}>Aperçu non disponible</p>
+                <p className={`mb-4 ${isDarkMode ? "text-gray-300" : "text-gray-600"}`}>AperÃ§u non disponible</p>
                 <a href={url} target="_blank" rel="noopener noreferrer" className="inline-block px-4 py-2 bg-violet text-white rounded-lg hover:bg-violet/90">
-                  Télécharger le fichier
+                  TÃ©lÃ©charger le fichier
                 </a>
               </div>
             )}
@@ -727,7 +727,7 @@ export default function ChatWidget() {
               </div>
               <div>
                 <h3 className="text-white font-bold text-sm">Assistant Strick&apos;in</h3>
-                <p className="text-white/70 text-xs">IA · Produits structurés</p>
+                <p className="text-white/70 text-xs">IA Â· Produits structurÃ©s</p>
               </div>
             </div>
             <div className="flex items-center gap-1">
@@ -738,7 +738,7 @@ export default function ChatWidget() {
                     className="p-2 text-white/60 hover:text-white transition-colors"
                     title={isDarkMode ? "Mode clair" : "Mode sombre"}
                   >
-                    {isDarkMode ? "☀️" : "🌙"}
+                    {isDarkMode ? "âï¸" : "ð"}
                   </button>
                   {messages.length > 1 && activeTab === "chat" && (
                     <button
@@ -746,16 +746,16 @@ export default function ChatWidget() {
                       className="p-2 text-white/60 hover:text-white transition-colors"
                       title="Exporter"
                     >
-                      ↓
+                      â
                     </button>
                   )}
                   {messages.length > 1 && activeTab === "chat" && (
                     <button
-                      onClick={() => setShowHistory(!showHistory) }
+                      onClick={() => setShowHistory(!showHistory)}
                       className="p-2 text-white/60 hover:text-white transition-colors"
                       title="Historique"
                     >
-                      📜
+                      ð
                     </button>
                   )}
                   {messages.length > 1 && activeTab === "chat" && (
@@ -764,12 +764,11 @@ export default function ChatWidget() {
                       className="p-2 text-white/60 hover:text-white transition-colors"
                       title="Nouvelle conversation"
                     >
-                      ↻
-
+                      â»
                     </button>
                   )}
                 </>
-              }
+              )}
             </div>
           </div>
 
@@ -780,14 +779,14 @@ export default function ChatWidget() {
               <div className="space-y-1.5">
                 {conversations.map(conv => (
                   <button
-                      key={conv.id}
-                      onClick={() => loadConversation(conv)}
-                      className={`w-full text-left px-3 py-2 rounded text-xs hover:opacity-80 transition ${isDarkMode ? "hover:bg-gray-700" : "hover:bg-white"}`}
-                    >
-                      <div className={isDarkMode ? "text-gray-300" : "text-gray-700"}>{conv.title}</div>
-                      <div className={`text-[10px] ${isDarkMode ? "text-gray-500" : "text-gray-400"}`}>{new Date(conv.timestamp).toLocaleString()}</div>
-                     </button>
-                  ))}
+                    key={conv.id}
+                    onClick={() => loadConversation(conv)}
+                    className={`w-full text-left px-3 py-2 rounded text-xs hover:opacity-80 transition ${isDarkMode ? "hover:bg-gray-700" : "hover:bg-white"}`}
+                  >
+                    <div className={isDarkMode ? "text-gray-300" : "text-gray-700"}>{conv.title}</div>
+                    <div className={`text-[10px] ${isDarkMode ? "text-gray-500" : "text-gray-400"}`}>{new Date(conv.timestamp).toLocaleString()}</div>
+                  </button>
+                ))}
               </div>
             </div>
           )}
@@ -798,9 +797,9 @@ export default function ChatWidget() {
               <form onSubmit={handleAuth} className="w-full space-y-4">
                 <div className="text-center mb-4">
                   <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-3 ${isDarkMode ? "bg-violet/20" : "bg-violet/10"}`}>
-                    <span className="text-2xl">🔐</span>
+                    <span className="text-2xl">ð</span>
                   </div>
-                  <h3 className={`font-bold ${isDarkMode ? "text-white" : "text-gray-800"}`}>Accès administrateur</h3>
+                  <h3 className={`font-bold ${isDarkMode ? "text-white" : "text-gray-800"}`}>AccÃ¨s administrateur</h3>
                   <p className={`text-xs mt-1 ${isDarkMode ? "text-gray-500" : "text-gray-500"}`}>Entrez le mot de passe</p>
                 </div>
                 <input
@@ -821,7 +820,7 @@ export default function ChatWidget() {
                   disabled={!password}
                   className="w-full py-3 rounded-xl bg-violet text-white text-sm font-medium hover:bg-violet/90 disabled:opacity-40 transition-all"
                 >
-                  Dåverrouiller
+                  DÃ©verrouiller
                 </button>
               </form>
             </div>
@@ -874,7 +873,7 @@ export default function ChatWidget() {
                     ))}
                     {attachedFiles.length > 0 && !isLoading && (
                       <div className={`text-xs px-1 py-2 ${isDarkMode ? "text-gray-400" : "text-gray-500"}`}>
-                        💡 Demandez-moi un résumé de ce fichier
+                        ð¡ Demandez-moi un rÃ©sumÃ© de ce fichier
                       </div>
                     )}
                     {isLoading && (
@@ -908,7 +907,7 @@ export default function ChatWidget() {
                       <div className="absolute inset-0 z-10 flex items-center justify-center bg-violet/10 border-2 border-dashed border-violet rounded-xl pointer-events-none">
                         <div className="flex flex-col items-center gap-1">
                           <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-violet"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>
-                          <span className="text-xs font-medium text-violet">Déposez vos fichiers ici</span>
+                          <span className="text-xs font-medium text-violet">DÃ©posez vos fichiers ici</span>
                         </div>
                       </div>
                     )}
@@ -1004,7 +1003,7 @@ export default function ChatWidget() {
                         type="text"
                         value={fileSearch}
                         onChange={e => setFileSearch(e.target.value)}
-                        placeholder="Rechercher un fichier ..."
+                        placeholder="Rechercher un fichier..."
                         className={`w-full text-xs px-3 py-2 pl-8 rounded-lg border outline-none transition-all ${
                           isDarkMode
                             ? "border-gray-600 bg-gray-800 text-white placeholder-gray-400 focus:border-violet"
@@ -1012,33 +1011,34 @@ export default function ChatWidget() {
                         }`}
                       />
                       <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`absolute left-2.5 top-1/2 -translate-y-1/2 ${isDarkMode ? "text-gray-500" : "text-gray-400"}`}><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-                   </div>
+                    </div>
+                  </div>
 
                   {/* Action buttons */}
                   <div className="px-4 py-2 flex gap-2 shrink-0">
-                      <button
-                        onClick={() => fileInputRef.current?.click()}
-                        disabled={uploadingFile}
-                        className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-violet text-white text-xs font-medium hover:bg-violet-90 disabled:opacity-50 transition-all"
-                      >
-                        {uploadingFile ? (
-                          <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                        ) : (
-                          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>
-                        )}
-                        {uploadingFile ? "Upload..." : "Uploader"}
-                      </button>
-                      <button
-                        onClick={loadFiles}
-                        disabled={filesLoading}
-                        className={`px-3 py-2 rounded-lg text-xs transition-all ${
-                          isDarkMode
-                            ? "border border-gray-600 text-gray-400 hover:bg-gray-800"
-                            : "border border-gray-200 text-gray-600 hover:bg-gray-50"
-                        }`}
-                        title="Rafraëchir"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={filesLoading ? "animate-spin" : ""}><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/></svg>
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={uploadingFile}
+                      className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-violet text-white text-xs font-medium hover:bg-violet/90 disabled:opacity-50 transition-all"
+                    >
+                      {uploadingFile ? (
+                        <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>
+                      )}
+                      {uploadingFile ? "Upload..." : "Uploader"}
+                    </button>
+                    <button
+                      onClick={loadFiles}
+                      disabled={filesLoading}
+                      className={`px-3 py-2 rounded-lg text-xs transition-all ${
+                        isDarkMode
+                          ? "border border-gray-600 text-gray-400 hover:bg-gray-800"
+                          : "border border-gray-200 text-gray-600 hover:bg-gray-50"
+                      }`}
+                      title="RafraÃ®chir"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={filesLoading ? "animate-spin" : ""}><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/></svg>
                     </button>
                   </div>
 
@@ -1059,7 +1059,7 @@ export default function ChatWidget() {
                       </div>
                     ) : filteredFiles.length === 0 ? (
                       <div className="text-center py-12">
-                        <p className={`text-sm ${isDarkMode ? "text-gray-500" : "text-gray-400"}`}>{selectedCategory ? "Aucun fichier dans ce dossier" : "Sélectionnez un dossier"}</p>
+                        <p className={`text-sm ${isDarkMode ? "text-gray-500" : "text-gray-400"}`}>{selectedCategory ? "Aucun fichier dans ce dossier" : "SÃ©lectionnez un dossier"}</p>
                         <p className={`text-xs mt-1 ${isDarkMode ? "text-gray-600" : "text-gray-300"}`}>Utilisez le menu ci-dessus pour naviguer</p>
                       </div>
                     ) : (
@@ -1082,7 +1082,7 @@ export default function ChatWidget() {
                               <p className={`text-xs font-medium truncate ${isDarkMode ? "text-gray-200" : "text-gray-800"}`}>{file.name}</p>
                               <div className="flex items-center gap-2 mt-1">
                                 <p className={`text-[10px] ${isDarkMode ? "text-gray-500" : "text-gray-400"}`}>
-                                  {formatSize(file.metadata?.size || 0)} · {new Date(file.created_at).toLocaleDateString()}
+                                  {formatSize(file.metadata?.size || 0)} Â· {new Date(file.created_at).toLocaleDateString()}
                                 </p>
                                 <span className={`text-[10px] px-1.5 py-0.5 rounded ${getFileTag(file.name).color}`}>
                                   {getFileTag(file.name).label}
@@ -1100,7 +1100,7 @@ export default function ChatWidget() {
                                     ? "text-gray-500 hover:text-violet hover:bg-violet/10"
                                     : "text-gray-400 hover:text-violet hover:bg-violet/10"
                                 }`}
-                                title="Télécharger"
+                                title="TÃ©lÃ©charger"
                               >
                                 <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
                               </button>
@@ -1113,7 +1113,7 @@ export default function ChatWidget() {
                                     className="w-7 h-7 rounded-lg flex items-center justify-center bg-red-500 text-white hover:bg-red-600 transition-all text-[10px] font-bold"
                                     title="Confirmer"
                                   >
-                                    ✓
+                                    â
                                   </button>
                                   <button
                                     onClick={(e) => { e.stopPropagation(); setDeleteConfirm(null); }}
@@ -1122,7 +1122,7 @@ export default function ChatWidget() {
                                     }`}
                                     title="Annuler"
                                   >
-                                    ✕
+                                    â
                                   </button>
                                 </div>
                               ) : (
@@ -1148,97 +1148,11 @@ export default function ChatWidget() {
                   {/* Activity logs */}
                   {activityLogs.length > 0 && (
                     <div className={`shrink-0 border-t px-4 py-2.5 max-h-24 overflow-y-auto ${isDarkMode ? "border-gray-700 bg-gray-800" : "border-gray-100 bg-gray-50/50"}`}>
-                      <p className={`text-[10px] font-semibold mb-1 ${isDarkMode ? "text-gray-400" : "text-gray-600"}`}>Activité</p>
+                      <p className={`text-[10px] font-semibold mb-1 ${isDarkMode ? "text-gray-400" : "text-gray-600"}`}>ActivitÃ©</p>
                       <div className="space-y-0.5">
                         {activityLogs.slice(0, 5).map(log => (
                           <p key={log.id} className={`text-[10px] ${isDarkMode ? "text-gray-500" : "text-gray-500"}`}>
-                            {log.action} · {new Date(log.timestamp).toLocaleTimeString()}
-                          </p>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Files footer */}
-                  <div className={`shrink-0 border-t px-4 py-2.5 ${isDarkMode ? "border-gray-700 bg-gray-800" : "border-gray-100 bg-gray-50/50"}`}>
-                    <p className={`text-center text-[10px] ${isDarkMode ? "text-gray-500" : "             <span className="text-base shrink-0">{getFileEmoji(file.name)}</span>
-
-                            {/* File info */}
-                            <div className="flex-1 min-w-0">
-                              <p className={`text-xs font-medium truncate ${isDarkMode ? "text-gray-200" : "text-gray-800"}`}>{file.name}</p>
-                              <div className="flex items-center gap-2 mt-1">
-                                <p className={`text-[10px] ${isDarkMode ? "text-gray-500" : "text-gray-400"}`}>
-                                  {formatSize(file.metadata?.size || 0)} · {new Date(file.created_at).toLocaleDateString()}
-                                </p>
-                                <span className={`text-[10px] px-1.5 py-0.5 rounded ${getFileTag(file.name).color}`}>
-                                  {getFileTag(file.name).label}
-                                </span>
-                              </div>
-                            </div>
-
-                            {/* Actions */}
-                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                              {/* Download */}
-                              <button
-                                onClick={(e) => { e.stopPropagation(); handleDownload(file.name); }}
-                                className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all ${
-                                  isDarkMode
-                                    ? "text-gray-500 hover:text-violet hover:bg-violet/10"
-                                    : "text-gray-400 hover:text-violet hover:bg-violet/10"
-                                }`}
-                                title="Télécharger"
-                              >
-                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
-                              </button>
-
-                              {/* Delete */}
-                              {deleteConfirm === file.name ? (
-                                <div className="flex items-center gap-1">
-                                  <button
-                                    onClick={(e) => { e.stopPropagation(); handleDelete(file.name); }}
-                                    className="w-7 h-7 rounded-lg flex items-center justify-center bg-red-500 text-white hover:bg-red-600 transition-all text-[10px] font-bold"
-                                    title="Confirmer"
-                                  >
-                                    ✓
-                                  </button>
-                                  <button
-                                    onClick={(e) => { e.stopPropagation(); setDeleteConfirm(null); }}
-                                    className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all text-[10px] font-bold ${
-                                      isDarkMode ? "bg-gray-700 text-gray-300 hover:bg-gray-600" : "bg-gray-200 text-gray-600 hover:bg-gray-300"
-                                    }`}
-                                    title="Annuler"
-                                  >
-                                    ✕
-                                  </button>
-                                </div>
-                              ) : (
-                                <button
-                                  onClick={(e) => { e.stopPropagation(); setDeleteConfirm(file.name); }}
-                                  className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all ${
-                                    isDarkMode
-                                      ? "text-gray-500 hover:text-red-500 hover:bg-red-500/10"
-                                      : "text-gray-400 hover:text-red-500 hover:bg-red-50"
-                                  }`}
-                                  title="Supprimer"
-                                >
-                                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
-                                </button>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Activity logs */}
-                  {activityLogs.length > 0 && (
-                    <div className={`shrink-0 border-t px-4 py-2.5 max-h-24 overflow-y-auto ${isDarkMode ? "border-gray-700 bg-gray-800" : "border-gray-100 bg-gray-50/50"}`}>
-                      <p className={`text-[10px] font-semibold mb-1 ${isDarkMode ? "text-gray-400" : "text-gray-600"}`}>Activité</p>
-                      <div className="space-y-0.5">
-                        {activityLogs.slice(0, 5).map(log => (
-                          <p key={log.id} className={`text-[10px] ${isDarkMode ? "text-gray-500" : "text-gray-500"}`}>
-                            {log.action} · {new Date(log.timestamp).toLocaleTimeString()}
+                            {log.action} Â· {new Date(log.timestamp).toLocaleTimeString()}
                           </p>
                         ))}
                       </div>
@@ -1248,45 +1162,32 @@ export default function ChatWidget() {
                   {/* Files footer */}
                   <div className={`shrink-0 border-t px-4 py-2.5 ${isDarkMode ? "border-gray-700 bg-gray-800" : "border-gray-100 bg-gray-50/50"}`}>
                     <p className={`text-center text-[10px] ${isDarkMode ? "text-gray-500" : "text-gray-400"}`}>
-                      {filteredFiles.length} fichier{filteredFiles.length !== 1 ? "s" : ""} {selectedCategory ? `dans ${categoryOptions.find(c => c.id === selectedCategory)?.label || selectedCategory}` : ""}
+                      {filteredFiles.length} fichier{filteredFiles.length !== 1 ? "s" : ""}
                     </p>
                   </div>
                 </div>
               )}
             </>
           )}
-        </div>
-      }
 
-      {/* Toast Notifications */}
-      <div className="fixed top-4 right-4 z-[110] space-y-2 pointer-events-none">
-        {toasts.map(toast => (
-          <div
-            key={toast.id}
-            className={`px-4 py-3 rounded-lg text-sm font-medium text-white shadow-lg animate-in pointer-events-auto ${
-              toast.type === "success" ? "bg-green-500" : "bg-red-500"
-            }`}
-          >
-            {toast.message}
+          {/* Toasts */}
+          <div className="fixed top-4 right-4 z-[200] space-y-2">
+            {toasts.map(toast => (
+              <div
+                key={toast.id}
+                className={`px-4 py-2.5 rounded-lg shadow-lg text-sm font-medium animate-in ${
+                  toast.type === "success" ? "bg-green-500 text-white" : "bg-red-500 text-white"
+                }`}
+              >
+                {toast.message}
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
+        </div>
+      )}
 
       {/* File Preview Modal */}
-      {=selectedFile && renderFilePreview()}
-
-      <style jsx>{`
-        @keyframes animate-in {
-          from { opacity: 0; transform: translateY(16px) scale(0.95); }
-          to { opacity: 1; transform: translateY(0) scale(1); }
-        }
-        .animate-in { animation: animate-in 0.2s ease-out; }
-
-        @media (max-width: 640px) {
-          .mobile:fixed { position: fixed !important; }
-          .mobile:inset-4 { inset: 1rem !important; }
-        }
-      `}</style>
+      {renderFilePreview()}
     </>
   );
 }
