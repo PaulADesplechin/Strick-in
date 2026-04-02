@@ -5,11 +5,11 @@ import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } fro
 
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY || "";
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
-const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
-// ── helpers ──────────────────────────────────────────
+// ââ helpers ââââââââââââââââââââââââââââââââââââââââââ
 async function listFiles(folder: string) {
   const { data, error } = await supabase.storage
     .from("strickin-docs")
@@ -74,7 +74,7 @@ async function generateFile(fileName: string, content: string, folder: string) {
 
       if (Array.isArray(parsed) && parsed.length > 0) {
         if (Array.isArray(parsed[0])) {
-          // Array of arrays — first row = headers
+          // Array of arrays â first row = headers
           const ws = XLSX.utils.aoa_to_sheet(parsed);
           XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
         } else if (typeof parsed[0] === "object") {
@@ -98,7 +98,7 @@ async function generateFile(fileName: string, content: string, folder: string) {
       fileBuffer = xlsxBuffer;
       contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
     } catch {
-      return { error: "Le contenu pour un fichier .xlsx doit être un JSON valide (tableau d'objets ou tableau de tableaux). Exemple : [{\"Nom\":\"Alice\",\"Age\":30},{\"Nom\":\"Bob\",\"Age\":25}]" };
+      return { error: "Le contenu pour un fichier .xlsx doit Ãªtre un JSON valide (tableau d'objets ou tableau de tableaux). Exemple : [{\"Nom\":\"Alice\",\"Age\":30},{\"Nom\":\"Bob\",\"Age\":25}]" };
     }
   } else if (ext === "docx") {
     // Generate Word document from JSON structure
@@ -110,7 +110,7 @@ async function generateFile(fileName: string, content: string, folder: string) {
       const children: Paragraph[] = [];
 
       if (Array.isArray(parsed)) {
-        // Simple array of strings → paragraphs
+        // Simple array of strings â paragraphs
         for (const item of parsed) {
           children.push(new Paragraph({ children: [new TextRun({ text: String(item), size: 24 })] }));
         }
@@ -148,13 +148,74 @@ async function generateFile(fileName: string, content: string, folder: string) {
       fileBuffer = docxBuf;
       contentType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
     } catch {
-      return { error: "Le contenu pour un fichier .docx doit être un JSON valide. Formats: tableau de strings [\"para1\",\"para2\"], ou objet {title:\"...\", sections:[{heading:\"...\", text:\"...\"}]}" };
+      return { error: "Le contenu pour un fichier .docx doit Ãªtre un JSON valide. Formats: tableau de strings [\"para1\",\"para2\"], ou objet {title:\"...\", sections:[{heading:\"...\", text:\"...\"}]}" };
+    }
+  } else if (ext === "html") {
+    // Generate HTML presentation (for .pptx alternative)
+    try {
+      const parsed = typeof content === "string" ? JSON.parse(content) : content;
+      let htmlContent = `<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PrÃ©sentation</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f0f0; }
+    .slide { width: 100%; height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 40px; text-align: center; page-break-after: always; background: white; border: 1px solid #ddd; }
+    .slide h1 { font-size: 48px; margin-bottom: 20px; color: #333; }
+    .slide h2 { font-size: 36px; margin-bottom: 20px; color: #555; }
+    .slide p { font-size: 20px; line-height: 1.6; color: #666; max-width: 900px; }
+    .slide ul { font-size: 18px; text-align: left; margin: 20px auto; max-width: 700px; }
+    .slide li { margin: 10px 0; }
+  </style>
+</head>
+<body>`;
+
+      // Support both simple array of strings and structured format
+      if (Array.isArray(parsed)) {
+        for (const item of parsed) {
+          if (typeof item === "string") {
+            htmlContent += `<div class="slide"><h1>${item}</h1></div>`;
+          } else if (typeof item === "object" && item.title) {
+            htmlContent += `<div class="slide"><h1>${item.title}</h1>`;
+            if (item.content) htmlContent += `<p>${item.content}</p>`;
+            if (item.points && Array.isArray(item.points)) {
+              htmlContent += `<ul>${item.points.map((p: string) => `<li>${p}</li>`).join("")}</ul>`;
+            }
+            htmlContent += `</div>`;
+          }
+        }
+      } else if (typeof parsed === "object") {
+        if (parsed.title) {
+          htmlContent += `<div class="slide"><h1>${parsed.title}</h1>`;
+          if (parsed.subtitle) htmlContent += `<p>${parsed.subtitle}</p>`;
+          htmlContent += `</div>`;
+        }
+        if (parsed.slides && Array.isArray(parsed.slides)) {
+          for (const slide of parsed.slides) {
+            htmlContent += `<div class="slide">`;
+            if (slide.title) htmlContent += `<h2>${slide.title}</h2>`;
+            if (slide.content) htmlContent += `<p>${slide.content}</p>`;
+            if (slide.points && Array.isArray(slide.points)) {
+              htmlContent += `<ul>${slide.points.map((p: string) => `<li>${p}</li>`).join("")}</ul>`;
+            }
+            htmlContent += `</div>`;
+          }
+        }
+      }
+
+      htmlContent += `</body></html>`;
+      fileBuffer = Buffer.from(htmlContent, "utf-8");
+      contentType = "text/html;charset=utf-8";
+    } catch {
+      return { error: "Le contenu pour un fichier .html de prÃ©sentation doit Ãªtre un JSON valide. Formats : tableau de strings ou objet {title:\"...\", slides:[{title:\"...\", content:\"...\", points:[...]}]}" };
     }
   } else {
     // Text-based files
     fileBuffer = Buffer.from(content, "utf-8");
-    if (ext === "html") contentType = "text/html;charset=utf-8";
-    else if (ext === "csv") contentType = "text/csv;charset=utf-8";
+    if (ext === "csv") contentType = "text/csv;charset=utf-8";
     else if (ext === "json") contentType = "application/json;charset=utf-8";
     else if (ext === "md") contentType = "text/markdown;charset=utf-8";
   }
@@ -165,7 +226,56 @@ async function generateFile(fileName: string, content: string, folder: string) {
   return { success: true, path, url: urlData?.publicUrl || "" };
 }
 
-// ── tools ────────────────────────────────────────────
+async function summarizeFile(filePath: string) {
+  try {
+    // Check file extension
+    const ext = filePath.split(".").pop()?.toLowerCase() || "";
+
+    // Text-readable files
+    if (["md", "txt", "csv", "json", "html", "js", "ts", "tsx", "jsx"].includes(ext)) {
+      const { data, error } = await supabase.storage.from("strickin-docs").download(filePath);
+      if (error) return { error: `Impossible de tÃ©lÃ©charger le fichier: ${error.message}` };
+
+      const content = new TextDecoder().decode(data);
+      const lines = content.split("\n").length;
+      const chars = content.length;
+      const preview = content.substring(0, 500);
+
+      return {
+        success: true,
+        filePath,
+        type: ext,
+        fileType: "text",
+        size: chars,
+        lines,
+        preview: preview + (chars > 500 ? "..." : ""),
+        summary: `Fichier texte (${ext}) - ${chars} caractÃ¨res, ${lines} lignes. AperÃ§u du contenu fourni.`,
+      };
+    }
+
+    // Binary files - provide metadata only
+    if (["pdf", "docx", "xlsx", "pptx", "doc", "xls"].includes(ext)) {
+      const { data: list } = await supabase.storage.from("strickin-docs").list(filePath.substring(0, filePath.lastIndexOf("/")), { limit: 200 });
+      const fileInfo = list?.find((f) => `${filePath.substring(0, filePath.lastIndexOf("/"))}/${f.name}` === filePath);
+
+      return {
+        success: true,
+        filePath,
+        type: ext,
+        fileType: "binary",
+        size: fileInfo?.metadata?.size || 0,
+        mimeType: fileInfo?.metadata?.mimetype || "",
+        summary: `Fichier binaire (${ext}) - non directement lisible. Taille: ${fileInfo?.metadata?.size || 0} bytes. Pour rÃ©sumer ce fichier, il faudrait utiliser une API spÃ©cialisÃ©e ou uploader son contenu texte extrait.`,
+      };
+    }
+
+    return { error: `Type de fichier non supportÃ©: .${ext}` };
+  } catch (error) {
+    return { error: `Erreur lors de la lecture du fichier: ${String(error)}` };
+  }
+}
+
+// ââ tools ââââââââââââââââââââââââââââââââââââââââââââ
 const TOOLS = [
   {
     name: "list_files",
@@ -174,7 +284,7 @@ const TOOLS = [
   },
   {
     name: "list_all_files",
-    description: "Liste TOUS les fichiers de toutes les catégories du storage.",
+    description: "Liste TOUS les fichiers de toutes les catÃ©gories du storage.",
     input_schema: { type: "object", properties: {} },
   },
   {
@@ -185,24 +295,35 @@ const TOOLS = [
   {
     name: "delete_multiple_files",
     description: "Supprime plusieurs fichiers du storage en une fois.",
-    input_schema: { type: "object", properties: { paths: { type: "array", items: { type: "string" }, description: "Liste des chemins à supprimer" } }, required: ["paths"] },
+    input_schema: { type: "object", properties: { paths: { type: "array", items: { type: "string" }, description: "Liste des chemins Ã  supprimer" } }, required: ["paths"] },
   },
   {
     name: "move_file",
-    description: "Déplace/renomme un fichier dans le storage.",
+    description: "DÃ©place/renomme un fichier dans le storage.",
     input_schema: { type: "object", properties: { from: { type: "string", description: "Chemin source" }, to: { type: "string", description: "Chemin destination" } }, required: ["from", "to"] },
   },
   {
     name: "generate_file",
-    description: "Génère et crée un nouveau fichier dans le storage. Supporte les fichiers texte (.md, .txt, .html, .csv, .json, .ts, .js), les fichiers Excel (.xlsx) ET les documents Word (.docx). Pour .xlsx: JSON stringifié (tableau d'objets, tableau de tableaux, ou objet multi-feuilles). Pour .docx: JSON stringifié — soit un tableau de strings [\"para1\",\"para2\"], soit un objet {title:\"...\", sections:[{heading:\"...\", text:\"...\"}]}.",
+    description: "GÃ©nÃ¨re et crÃ©e un nouveau fichier dans le storage. Supporte les fichiers texte (.md, .txt, .html, .csv, .json, .ts, .js), les fichiers Excel (.xlsx), les documents Word (.docx), ET les prÃ©sentations HTML (.html pour des prÃ©sentations interactives en lieu et place de .pptx). Pour .xlsx: JSON stringifiÃ© (tableau d'objets, tableau de tableaux, ou objet multi-feuilles). Pour .docx: JSON stringifiÃ© â soit un tableau de strings soit un objet avec title et sections. Pour .html de prÃ©sentation: JSON stringifiÃ© (tableau de strings ou objet {title, slides:[{title, content, points}]}).",
     input_schema: {
       type: "object",
       properties: {
-        file_name: { type: "string", description: "Nom du fichier avec extension (ex: 'rapport.md', 'data.csv', 'tableau.xlsx')" },
-        content: { type: "string", description: "Contenu du fichier. Pour .xlsx : JSON stringifié (tableau d'objets ou tableau de tableaux). Pour les autres : texte brut." },
-        folder: { type: "string", description: "Dossier cible (ex: '03_Tableurs'). Par défaut 'uploads'." },
+        file_name: { type: "string", description: "Nom du fichier avec extension (ex: 'rapport.md', 'data.csv', 'tableau.xlsx', 'presentation.html')" },
+        content: { type: "string", description: "Contenu du fichier. Pour .xlsx : JSON stringifiÃ©. Pour .docx: JSON stringifiÃ©. Pour .html de prÃ©sentation: JSON stringifiÃ©. Sinon: texte brut." },
+        folder: { type: "string", description: "Dossier cible (ex: '03_Tableurs'). Par dÃ©faut 'uploads'." },
       },
       required: ["file_name", "content"],
+    },
+  },
+  {
+    name: "summarize_file",
+    description: "RÃ©sume ou extrait les mÃ©tadonnÃ©es d'un fichier du storage. Pour les fichiers texte (.md, .txt, .csv, .json, .html, code), affiche un aperÃ§u du contenu. Pour les fichiers binaires (.pdf, .docx, .xlsx, .pptx), affiche les mÃ©tadonnÃ©es et propose des alternatives.",
+    input_schema: {
+      type: "object",
+      properties: {
+        file_path: { type: "string", description: "Chemin complet du fichier (ex: '01_Presentations/pitch.pdf' ou '02_Documents/rapport.md')" },
+      },
+      required: ["file_path"],
     },
   },
 ];
@@ -215,102 +336,126 @@ async function executeTool(name: string, input: Record<string, unknown>) {
     case "delete_multiple_files": return deleteMultipleFiles(input.paths as string[]);
     case "move_file": return moveFile(input.from as string, input.to as string);
     case "generate_file": return generateFile(input.file_name as string, input.content as string, (input.folder as string) || "uploads");
+    case "summarize_file": return summarizeFile(input.file_path as string);
     default: return { error: `Outil inconnu: ${name}` };
   }
 }
 
-// ── system prompt ────────────────────────────────────
-const SYSTEM_PROMPT = `Tu es l'assistant IA de Strick'in, une plateforme SaaS de distribution de produits structurés en France.
+// ââ system prompt ââââââââââââââââââââââââââââââââââââ
+const SYSTEM_PROMPT = `Tu es l'assistant IA de Strick'in, une plateforme SaaS de distribution de produits structurÃ©s en France.
 
-## Ton rôle
-- Répondre aux questions sur les produits structurés (Autocall, Phoenix, Reverse Convertible, certificats, etc.)
-- Expliquer les mécanismes des produits : barrières, coupons, sous-jacents, knock-in, autocall, etc.
-- Aider à générer des business plans pour la distribution de produits structurés
-- Donner des informations sur le marché français des produits structurés (environ 80 Mds EUR)
-- Assister sur les aspects réglementaires (MiFID II, PRIIPs, KID, DDA)
-- **Gérer les fichiers** : lister, supprimer, déplacer, organiser les documents
-- **Générer des fichiers** : créer des rapports, documents, CSV, JSON, et tout type de fichier texte
+## Ton rÃ´le
+- RÃ©pondre aux questions sur les produits structurÃ©s (Autocall, Phoenix, Reverse Convertible, certificats, etc.)
+- Expliquer les mÃ©canismes des produits : barriÃ¨res, coupons, sous-jacents, knock-in, autocall, etc.
+- Aider Ã  gÃ©nÃ©rer des business plans pour la distribution de produits structurÃ©s
+- Donner des informations sur le marchÃ© franÃ§ais des produits structurÃ©s (environ 80 Mds EUR)
+- Assister sur les aspects rÃ©glementaires (MiFID II, PRIIPs, KID, DDA)
+- **GÃ©rer les fichiers** : lister, supprimer, dÃ©placer, organiser les documents
+- **GÃ©nÃ©rer des fichiers** : crÃ©er des rapports, documents, CSV, JSON, et tout type de fichier texte
+- **RÃ©sumer et explorer les fichiers** : extraire des aperÃ§us et mÃ©tadonnÃ©es
 
 ## Contexte Strick'in
-- Plateforme B2B2C de distribution digitale de produits structurés
-- Partenaires émetteurs : Julius Baer, Marex Solutions, BNP Paribas / Cardif, BBVA, Goldman Sachs, HSBC
-- Partenaires distributeurs : MeilleurTaux, CGP, courtiers, banques privées
+- Plateforme B2B2C de distribution digitale de produits structurÃ©s
+- Partenaires Ã©metteurs : Julius Baer, Marex Solutions, BNP Paribas / Cardif, BBVA, Goldman Sachs, HSBC
+- Partenaires distributeurs : MeilleurTaux, CGP, courtiers, banques privÃ©es
 - Stack technique : Next.js 14, TypeScript, Supabase, Vercel
 - Base documentaire : ~170 documents (brochures, KIDs, bulletins, fiches rapides, conditions, etc.)
 
-## Catégories de documents disponibles
-1. 01_Presentations — Pitch decks, présentations investisseurs/assureurs
-2. 02_Documents — Documents internes (blueprints, briefs, memos fondateur)
-3. 03_Tableurs — Catalogues, suivis produits
-4. 04_Branding_Strikin — Brand books, chartes graphiques
-5. 05_Produits_Cardif — Brochures, bulletins, conditions, fiches rapides, KIDs
-6. 06_Produits_MeilleurTaux — Brochures, KIDs, DIC, final terms
-7. 07_Marex — Term sheets, conditions
-8. 08_Fiches_Produits — Guides, KID de référence
-9. 09_Code_Produits_Structures — Code templates autocall, templates génériques
+## CatÃ©gories de documents disponibles
+1. 01_Presentations â Pitch decks, prÃ©sentations investisseurs/assureurs
+2. 02_Documents â Documents internes (blueprints, briefs, memos fondateur)
+3. 03_Tableurs â Catalogues, suivis produits
+4. 04_Branding_Strikin â Brand books, chartes graphiques
+5. 05_Produits_Cardif â Brochures, bulletins, conditions, fiches rapides, KIDs
+6. 06_Produits_MeilleurTaux â Brochures, KIDs, DIC, final terms
+7. 07_Marex â Term sheets, conditions
+8. 08_Fiches_Produits â Guides, KID de rÃ©fÃ©rence
+9. 09_Code_Produits_Structures â Code templates autocall, templates gÃ©nÃ©riques
 
 ## Gestion de fichiers
-Tu as accès à des outils pour gérer les fichiers dans le storage Supabase :
+Tu as accÃ¨s Ã  des outils pour gÃ©rer et explorer les fichiers dans le storage Supabase :
 - **list_files** : lister les fichiers d'un dossier
 - **list_all_files** : lister tous les fichiers
 - **delete_file** : supprimer un fichier
 - **delete_multiple_files** : supprimer plusieurs fichiers
-- **move_file** : déplacer/renommer un fichier
-- **generate_file** : créer un nouveau fichier (markdown, CSV, JSON, HTML, texte, code, **fichiers Excel .xlsx** et **documents Word .docx** !)
+- **move_file** : dÃ©placer/renommer un fichier
+- **generate_file** : crÃ©er un nouveau fichier (markdown, CSV, JSON, HTML, texte, code, **fichiers Excel .xlsx**, **documents Word .docx**, ET **prÃ©sentations HTML .html**)
+- **summarize_file** : extraire un aperÃ§u ou les mÃ©tadonnÃ©es d'un fichier
 
-Quand on te demande de générer un fichier, utilise l'outil generate_file pour le créer directement dans le storage.
-Pour les fichiers générés, utilise le dossier approprié selon le type de contenu, ou 'uploads' par défaut.
+Quand on te demande de gÃ©nÃ©rer un fichier, utilise l'outil generate_file pour le crÃ©er directement dans le storage.
+Pour les fichiers gÃ©nÃ©rÃ©s, utilise le dossier appropriÃ© selon le type de contenu, ou 'uploads' par dÃ©faut.
 
-## Génération de fichiers Excel (.xlsx)
-Pour créer un fichier Excel, utilise generate_file avec une extension .xlsx et passe le contenu sous forme de JSON stringifié.
-Formats supportés :
-- **Tableau d'objets** : [{"Nom":"Alice","Age":30},{"Nom":"Bob","Age":25}] → crée un tableau avec headers automatiques
-- **Tableau de tableaux** : [["Nom","Age"],["Alice",30],["Bob",25]] → première ligne = headers
-- **Multi-feuilles** : {"Ventes":[...],"Stocks":[...]} → crée plusieurs onglets
+## GÃ©nÃ©ration de fichiers Excel (.xlsx)
+Pour crÃ©er un fichier Excel, utilise generate_file avec une extension .xlsx et passe le contenu sous forme de JSON stringifiÃ©.
+Formats supportÃ©s :
+- **Tableau d'objets** : [{"Nom":"Alice","Age":30},{"Nom":"Bob","Age":25}] â crÃ©e un tableau avec headers automatiques
+- **Tableau de tableaux** : [["Nom","Age"],["Alice",30],["Bob",25]] â premiÃ¨re ligne = headers
+- **Multi-feuilles** : {"Ventes":[...],"Stocks":[...]} â crÃ©e plusieurs onglets
 Utilise le dossier '03_Tableurs' pour les fichiers Excel.
 
-## Génération de documents Word (.docx)
-Pour créer un document Word, utilise generate_file avec une extension .docx et passe le contenu sous forme de JSON stringifié.
-Formats supportés :
-- **Tableau de paragraphes** : ["Premier paragraphe", "Deuxième paragraphe"] → crée un document simple
-- **Document structuré** : {"title":"Mon Titre", "sections":[{"heading":"Section 1", "text":"Contenu..."}, {"heading":"Section 2", "text":["Paragraphe 1", "Paragraphe 2"]}]} → crée un document avec titre, headings et paragraphes
+## GÃ©nÃ©ration de documents Word (.docx)
+Pour crÃ©er un document Word, utilise generate_file avec une extension .docx et passe le contenu sous forme de JSON stringifiÃ©.
+Formats supportÃ©s :
+- **Tableau de paragraphes** : ["Premier paragraphe", "DeuxiÃ¨me paragraphe"] â crÃ©e un document simple
+- **Document structurÃ©** : {"title":"Mon Titre", "sections":[{"heading":"Section 1", "text":"Contenu..."}, {"heading":"Section 2", "text":["Paragraphe 1", "Paragraphe 2"]}]} â crÃ©e un document avec titre, headings et paragraphes
 Utilise le dossier '02_Documents' pour les fichiers Word.
 
+## GÃ©nÃ©ration de prÃ©sentations HTML (.html)
+Puisque la gÃ©nÃ©ration native de .pptx n'est pas disponible, tu peux gÃ©nÃ©rer des prÃ©sentations interactives au format HTML qui fonctionnent en navigateur.
+Pour crÃ©er une prÃ©sentation HTML, utilise generate_file avec une extension .html et passe le contenu sous forme de JSON stringifiÃ©.
+Formats supportÃ©s :
+- **Tableau de titres** : ["Titre 1", "Titre 2", "Titre 3"] â crÃ©e des slides simples
+- **PrÃ©sentation structurÃ©e** : {"title":"PrÃ©sentation", "subtitle":"Sous-titre", "slides":[{"title":"Slide 1", "content":"Contenu", "points":["Point 1", "Point 2"]}]} â crÃ©e une prÃ©sentation professionnelle
+Les fichiers HTML gÃ©nÃ©rÃ© peuvent Ãªtre ouverts dans n'importe quel navigateur et imprimÃ©s en PDF si nÃ©cessaire.
+Utilise le dossier '01_Presentations' pour les prÃ©sentations HTML.
+
+## RÃ©sumÃ© de fichiers
+Quand on te demande de rÃ©sumer ou d'explorer un fichier :
+- Utilise **summarize_file** avec le chemin complet du fichier
+- Pour les fichiers texte (.md, .txt, .csv, .json, .html, code) : tu obtiendras un aperÃ§u du contenu
+- Pour les fichiers binaires (.pdf, .docx, .xlsx, .pptx) : tu obtiendras les mÃ©tadonnÃ©es et pourras proposer d'extraire/convertir le contenu si nÃ©cessaire
+- Propose toujours au utilisateur un rÃ©sumÃ© ou un aperÃ§u lorsqu'ils uploadent des fichiers
+
 ## Pour les business plans
-Quand on te demande de générer un business plan, pose les questions suivantes une par une :
-1. Quel type de produit structuré ? (Autocall, Phoenix, Capital garanti, etc.)
+Quand on te demande de gÃ©nÃ©rer un business plan, pose les questions suivantes une par une :
+1. Quel type de produit structurÃ© ? (Autocall, Phoenix, Capital garanti, etc.)
 2. Quel sous-jacent ? (Indices, actions, taux, crypto)
-3. Quel marché cible ? (France, Europe, spécifique)
-4. Quel canal de distribution ? (CGP, banques privées, assurance-vie, en ligne)
-5. Quel volume visé ? (AUM cible, nombre de souscriptions)
+3. Quel marchÃ© cible ? (France, Europe, spÃ©cifique)
+4. Quel canal de distribution ? (CGP, banques privÃ©es, assurance-vie, en ligne)
+5. Quel volume visÃ© ? (AUM cible, nombre de souscriptions)
 6. Quel horizon ? (1 an, 3 ans, 5 ans)
 
-Puis génère un business plan structuré et propose de le sauvegarder comme fichier.
+Puis gÃ©nÃ¨re un business plan structurÃ© et propose de le sauvegarder comme fichier.
 
-## Règles
-- Réponds toujours en français
-- Sois précis et professionnel mais accessible
-- Utilise des données de marché réalistes
-- Ne donne jamais de conseil en investissement personnalisé
-- Précise que les produits structurés comportent un risque de perte en capital
-- Quand tu génères un fichier, confirme avec le chemin et un résumé du contenu`;
+## RÃ¨gles
+- RÃ©ponds toujours en franÃ§ais
+- Sois prÃ©cis et professionnel mais accessible
+- Utilise des donnÃ©es de marchÃ© rÃ©alistes
+- Ne donne jamais de conseil en investissement personnalisÃ©
+- PrÃ©cise que les produits structurÃ©s comportent un risque de perte en capital
+- Quand tu gÃ©nÃ¨res un fichier, confirme avec le chemin et un rÃ©sumÃ© du contenu`;
 
-// ── API handler ──────────────────────────────────────
+// ââ streaming helper ââââââââââââââââââââââââââââââââââ
+function createSSEMessage(text: string): string {
+  return `data: ${JSON.stringify({ text })}\n\n`;
+}
+
+// ââ API handler ââââââââââââââââââââââââââââââââââââââ
 const MAX_ITERATIONS = 5;
 
 export async function POST(req: NextRequest) {
   if (!ANTHROPIC_API_KEY) {
     return NextResponse.json(
-      { error: "Clé API Anthropic non configurée. Ajoutez ANTHROPIC_API_KEY dans les variables d'environnement Vercel." },
+      { error: "ClÃ© API Anthropic non configurÃ©e. Ajoutez ANTHROPIC_API_KEY dans les variables d'environnement Vercel." },
       { status: 500 }
     );
   }
 
   try {
-    const { messages, adminPassword } = await req.json();
+    const { messages, adminPassword, stream } = await req.json();
 
     if (adminPassword !== "strickin2026") {
-      return NextResponse.json({ error: "Accès non autorisé" }, { status: 403 });
+      return NextResponse.json({ error: "AccÃ¨s non autorisÃ©" }, { status: 403 });
     }
 
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
@@ -324,6 +469,8 @@ export async function POST(req: NextRequest) {
 
     // Tool-use loop
     let iterations = 0;
+    let finalResponse = "";
+
     while (iterations < MAX_ITERATIONS) {
       iterations++;
 
@@ -377,15 +524,48 @@ export async function POST(req: NextRequest) {
       }
 
       // Extract final text
-      const text = data.content
+      finalResponse = data.content
         ?.filter((b: { type: string }) => b.type === "text")
         .map((b: { text: string }) => b.text)
-        .join("\n") || "Désolé, je n'ai pas pu générer de réponse.";
+        .join("\n") || "DÃ©solÃ©, je n'ai pas pu gÃ©nÃ©rer de rÃ©ponse.";
 
-      return NextResponse.json({ response: text });
+      // Handle streaming or JSON response
+      if (stream) {
+        // Stream response using Server-Sent Events
+        const encoder = new TextEncoder();
+        const chunks: Uint8Array[] = [];
+
+        // Stream each character chunk
+        for (const chunk of finalResponse.split("")) {
+          chunks.push(encoder.encode(createSSEMessage(chunk)));
+        }
+        // Send completion signal
+        chunks.push(encoder.encode("data: [DONE]\n\n"));
+
+        return new NextResponse(
+          new ReadableStream({
+            start(controller) {
+              for (const chunk of chunks) {
+                controller.enqueue(chunk);
+              }
+              controller.close();
+            },
+          }),
+          {
+            headers: {
+              "Content-Type": "text/event-stream",
+              "Cache-Control": "no-cache",
+              "Connection": "keep-alive",
+            },
+          }
+        );
+      } else {
+        // Standard JSON response
+        return NextResponse.json({ response: finalResponse });
+      }
     }
 
-    return NextResponse.json({ response: "Désolé, le traitement a pris trop de temps. Essayez une demande plus simple." });
+    return NextResponse.json({ response: "DÃ©solÃ©, le traitement a pris trop de temps. Essayez une demande plus simple." });
   } catch (error) {
     console.error("Chat API error:", error);
     return NextResponse.json(
