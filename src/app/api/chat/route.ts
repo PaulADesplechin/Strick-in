@@ -236,7 +236,7 @@ async function summarizeFile(filePath: string) {
       const { data, error } = await supabase.storage.from("strickin-docs").download(filePath);
       if (error) return { error: `Impossible de tÃ©lÃ©charger le fichier: ${error.message}` };
 
-      const content = new TextDecoder().decode(data);
+      const content = new TextDecoder().decode(await (data as Blob).arrayBuffer());
       const lines = content.split("\n").length;
       const chars = content.length;
       const preview = content.substring(0, 500);
