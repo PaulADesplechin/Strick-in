@@ -694,7 +694,7 @@ export default function ChatWidget() {
   }
 
   // ============= Main Render =============
-  Return (
+  return (
     <>
       {/* Floating button */}
       <button
